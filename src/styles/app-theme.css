@@ -12,27 +12,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 :root {
-  --void: #14181b;
-  --wash: #1c2024;
-  --paper: #22282c;
-  --raised: #2a3136;
-  --wash-deep: #2e353a;
+  --void: #1b2026;
+  --wash: #232930;
+  --paper: #2b323a;
+  --raised: #333b44;
+  --wash-deep: #3a434d;
 
-  --ink: #eef1f2;
-  --ink-soft: rgba(238, 241, 242, 0.78);
-  --muted: rgba(238, 241, 242, 0.5);
-  --rule: #333940;
-  --rule-strong: #444c53;
+  --ink: #f7f9fa;
+  --ink-soft: rgba(247, 249, 250, 0.88);
+  --muted: rgba(247, 249, 250, 0.66);
+  --rule: #3c4550;
+  --rule-strong: #566170;
 
-  --heat: #e05a3c;
-  --cold: #4d9de0;
-  --signal: #efc84a;
+  --heat: #ff7a55;
+  --cold: #6fb4f2;
+  --signal: #f5d162;
 
   /* Kept for components that still reference the old names */
-  --heat-hot: #e05a3c;
-  --heat-warm: #e05a3c;
-  --heat-mild: #efc84a;
-  --heat-cool: #4d9de0;
+  --heat-hot: #ff7a55;
+  --heat-warm: #ff7a55;
+  --heat-mild: #f5d162;
+  --heat-cool: #6fb4f2;
 
   --ui: 'Space Grotesk', system-ui, -apple-system, sans-serif;
 }
@@ -194,8 +194,8 @@ h4 {
 
 .map-pane {
   position: relative;
-  height: 34vh;
-  min-height: 240px;
+  height: 40vh;
+  min-height: 280px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--rule);
   background: var(--void);
@@ -204,9 +204,9 @@ h4 {
 @media (min-width: 1000px) {
   .map-pane {
     height: auto;
-    width: 34%;
-    max-width: 560px;
-    min-width: 320px;
+    width: 42%;
+    max-width: 720px;
+    min-width: 340px;
     border-bottom: 0;
     border-right: 1px solid var(--rule);
   }
@@ -520,7 +520,8 @@ select option {
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   height: 3px;
   padding: 0;
   border: 0;
@@ -634,13 +635,6 @@ button:focus-visible {
   font-family: var(--ui) !important;
 }
 
-/* OpenStreetMap needs no key, unlike every styled dark basemap, so the tiles
-   are darkened here instead. Only the tile pane is filtered, so the selection
-   rectangle and marker keep their real colours. */
-.leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) brightness(0.86) contrast(0.92) saturate(0.5);
-}
-
 .leaflet-pane,
 .leaflet-top,
 .leaflet-bottom {
@@ -686,4 +680,65 @@ button:focus-visible {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Peril identity. Red is heat and blue is cold, everywhere. */
+.pill[data-peril='heat'][data-active='true'] {
+  background: var(--heat);
+  color: #1b2026;
+}
+
+.pill[data-peril='cold'][data-active='true'] {
+  background: var(--cold);
+  color: #1b2026;
+}
+
+.pill[data-peril='both'][data-active='true'] {
+  background: linear-gradient(100deg, var(--heat) 0%, var(--heat) 46%, var(--cold) 54%, var(--cold) 100%);
+  color: #1b2026;
+}
+
+.data-table td.c-heat,
+.data-table th.c-heat {
+  background: rgba(255, 122, 85, 0.09);
+}
+
+.data-table td.c-cold,
+.data-table th.c-cold {
+  background: rgba(111, 180, 242, 0.09);
+}
+
+.data-table tbody tr:hover td.c-heat {
+  background: rgba(255, 122, 85, 0.15);
+}
+
+.data-table tbody tr:hover td.c-cold {
+  background: rgba(111, 180, 242, 0.15);
+}
+
+.data-table th.c-heat {
+  border-bottom-color: var(--heat);
+}
+
+.data-table th.c-cold {
+  border-bottom-color: var(--cold);
+}
+
+/* A slider paired with a typed value */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slider-row input[type='number'] {
+  width: 74px;
+  flex-shrink: 0;
+  text-align: right;
+  padding: 4px 6px;
+  font-size: 12.5px;
+}
+
+.readout > * {
+  flex: 1 1 140px;
 }

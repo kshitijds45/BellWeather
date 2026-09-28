@@ -8,8 +8,8 @@ import { POPULATION_YEAR, BASELINE, FUTURE } from '../services/ClimateData';
 
 export type Peril = 'heat' | 'cold' | 'both';
 
-const HEAT = '#e05a3c';
-const COLD = '#4d9de0';
+const HEAT = '#ff7a55';
+const COLD = '#6fb4f2';
 
 export const perilLabel: Record<Peril, string> = {
   heat: 'Heat only',
@@ -20,13 +20,13 @@ export const perilLabel: Record<Peril, string> = {
 export const pickPrice = (r: LocationResult, p: Peril): Price =>
   p === 'heat' ? r.heat.price : p === 'cold' ? r.cold.price : r.combined;
 
-const axis = { fontSize: 10, fill: 'rgba(238,241,242,0.5)' };
+const axis = { fontSize: 10, fill: 'rgba(247,249,250,0.66)' };
 const tooltipStyle = {
   fontSize: 12,
   borderRadius: 3,
-  background: '#22282c',
-  borderColor: '#444c53',
-  color: '#eef1f2',
+  background: '#2b323a',
+  borderColor: '#566170',
+  color: '#f7f9fa',
 };
 
 // ---------------------------------------------------------------------------
@@ -60,13 +60,13 @@ export const ProductSection: React.FC<{
         }
       />
 
-      <div className="section-body grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+      <div className="section-body space-y-3">
 
         <PanelBlock
           head="Cover"
-          aside={<Pills value={peril} onChange={onPerilChange} options={[['heat', 'Heat'], ['cold', 'Cold'], ['both', 'Both']]} />}
+          aside={<Pills peril value={peril} onChange={onPerilChange} options={[['heat', 'Heat'], ['cold', 'Cold'], ['both', 'Both']]} />}
         >
-          <div className="space-y-4">
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
             {peril !== 'cold' && (
               <SliderField
                 label="Heat trigger, daily max at or above"
@@ -75,7 +75,7 @@ export const ProductSection: React.FC<{
                 min={20}
                 max={45}
                 step={0.5}
-                format={v => `${v}°C`}
+                unit="°C"
               />
             )}
             {peril !== 'cold' && (
@@ -85,7 +85,7 @@ export const ProductSection: React.FC<{
                 onChange={v => set({ heatDuration: Math.round(v) })}
                 min={1}
                 max={10}
-                format={v => `${v} d`}
+                unit="d"
               />
             )}
             {peril !== 'heat' && (
@@ -96,7 +96,7 @@ export const ProductSection: React.FC<{
                 min={-15}
                 max={10}
                 step={0.5}
-                format={v => `${v}°C`}
+                unit="°C"
               />
             )}
             {peril !== 'heat' && (
@@ -106,14 +106,14 @@ export const ProductSection: React.FC<{
                 onChange={v => set({ coldDuration: Math.round(v) })}
                 min={1}
                 max={21}
-                format={v => `${v} d`}
+                unit="d"
               />
             )}
           </div>
         </PanelBlock>
 
         <PanelBlock head="Limits and uptake">
-          <div className="space-y-4">
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="grid grid-cols-2 gap-3">
               <NumberField label="Payout per event" value={a.payoutPerEvent} onChange={v => set({ payoutPerEvent: Math.max(1, v) })} prefix={currency.symbol} min={1} step={25} />
               <label className="block">
@@ -129,7 +129,7 @@ export const ProductSection: React.FC<{
               onChange={v => set({ annualLimit: Math.round(v) })}
               min={1}
               max={12}
-              format={v => `${v}`}
+              unit=""
             />
             <SliderField
               label="Adoption rate"
@@ -138,21 +138,21 @@ export const ProductSection: React.FC<{
               min={0.05}
               max={10}
               step={0.05}
-              format={v => `${v}%`}
-              hint={`${count(book, currency)} policies`}
+              unit="%"
+              hint={`${count(book, currency)} policies in force`}
             />
           </div>
         </PanelBlock>
 
         <PanelBlock head="Pricing basis">
-          <div className="space-y-4">
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
             <SliderField
               label="Target combined ratio"
               value={Math.round(a.targetCombinedRatio * 100)}
               onChange={v => set({ targetCombinedRatio: v / 100 })}
               min={50}
               max={110}
-              format={v => `${v}%`}
+              unit="%"
             />
             <SliderField
               label="Expense ratio"
@@ -160,10 +160,10 @@ export const ProductSection: React.FC<{
               onChange={v => set({ expenseRatio: v / 100 })}
               min={5}
               max={60}
-              format={v => `${v}%`}
+              unit="%"
               hint={invalid ? 'Exceeds combined ratio' : `Loss ratio ${pct(a.targetCombinedRatio - a.expenseRatio)}`}
             />
-            <div className="hairline pt-3.5">
+            <div>
               <SliderField
                 label="Volume discount per doubling"
                 value={+(a.volumeDiscountPerDoubling * 100).toFixed(1)}
@@ -171,10 +171,10 @@ export const ProductSection: React.FC<{
                 min={0}
                 max={6}
                 step={0.5}
-                format={v => `${v} pp`}
+                unit="pp"
                 hint={a.volumeDiscountPerDoubling > 0 ? `Applied: ${pct(effectiveExpenseRatio(a, book), 1)}` : 'Off'}
               />
-              <div className="mt-3">
+              <div className="mt-3.5">
                 <NumberField
                   label="Reference book size"
                   value={a.referencePolicies}
@@ -248,43 +248,39 @@ export const RiskSection: React.FC<{
         )}
 
         {result && !loading && (
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+          <div className="space-y-3">
             <PanelBlock head="Frequency and trend">
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>Peril</th>
-                    <th>As recorded</th>
-                    <th>Adjusted</th>
-                    <th>Trend / decade</th>
+                    <th>Events a year, as recorded</th>
+                    <th>Trend adjusted</th>
+                    <th>Seasonal trend / decade</th>
                   </tr>
                 </thead>
                 <tbody>
                   {showHeat && (
                     <tr>
-                      <td style={{ color: HEAT }}>Heat</td>
-                      <td>{result.heat.observedMean.toFixed(2)}</td>
-                      <td style={{ fontWeight: 600 }}>{result.heat.frequency.mean.toFixed(2)}</td>
-                      <td>{result.heat.slopePerDecade >= 0 ? '+' : '−'}{Math.abs(result.heat.slopePerDecade).toFixed(2)}°C</td>
+                      <td className="c-heat" style={{ color: HEAT, fontWeight: 600 }}>Heat</td>
+                      <td className="c-heat">{result.heat.observedMean.toFixed(2)}</td>
+                      <td className="c-heat" style={{ fontWeight: 600 }}>{result.heat.frequency.mean.toFixed(2)}</td>
+                      <td className="c-heat">{result.heat.slopePerDecade >= 0 ? '+' : '−'}{Math.abs(result.heat.slopePerDecade).toFixed(2)}°C</td>
                     </tr>
                   )}
                   {showCold && (
                     <tr>
-                      <td style={{ color: COLD }}>Cold</td>
-                      <td>{result.cold.observedMean.toFixed(2)}</td>
-                      <td style={{ fontWeight: 600 }}>{result.cold.frequency.mean.toFixed(2)}</td>
-                      <td>{result.cold.slopePerDecade >= 0 ? '+' : '−'}{Math.abs(result.cold.slopePerDecade).toFixed(2)}°C</td>
+                      <td className="c-cold" style={{ color: COLD, fontWeight: 600 }}>Cold</td>
+                      <td className="c-cold">{result.cold.observedMean.toFixed(2)}</td>
+                      <td className="c-cold" style={{ fontWeight: 600 }}>{result.cold.frequency.mean.toFixed(2)}</td>
+                      <td className="c-cold">{result.cold.slopePerDecade >= 0 ? '+' : '−'}{Math.abs(result.cold.slopePerDecade).toFixed(2)}°C</td>
                     </tr>
                   )}
                   <tr>
                     <td style={{ color: 'var(--muted)' }}>Worst year</td>
-                    <td colSpan={3}>
-                      {worst.v > 0 ? `${worst.y}, ${worst.v} event${worst.v === 1 ? '' : 's'}` : 'none on record'}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ color: 'var(--muted)' }}>Frequency model</td>
-                    <td colSpan={3}>{result.heat.frequency.model}</td>
+                    <td>{worst.v > 0 ? worst.y : '—'}</td>
+                    <td>{worst.v > 0 ? `${worst.v} event${worst.v === 1 ? '' : 's'}` : '—'}</td>
+                    <td>{result.heat.frequency.model}</td>
                   </tr>
                 </tbody>
               </table>
@@ -296,7 +292,7 @@ export const RiskSection: React.FC<{
                   <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                     <XAxis dataKey="year" tick={axis} tickLine={false} axisLine={{ stroke: '#333940' }} interval={3} />
                     <YAxis allowDecimals={false} tick={axis} tickLine={false} axisLine={false} width={22} />
-                    <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#eef1f2' }} labelStyle={{ color: 'rgba(238,241,242,0.6)' }} cursor={{ fill: 'rgba(238,241,242,0.05)' }} />
+                    <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#eef1f2' }} labelStyle={{ color: 'rgba(247,249,250,0.7)' }} cursor={{ fill: 'rgba(247,249,250,0.06)' }} />
                     <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                     {showHeat && <Bar dataKey="Heat" fill={HEAT} />}
                     {showCold && <Bar dataKey="Cold" fill={COLD} />}
@@ -374,8 +370,8 @@ export const PriceSection: React.FC<{
             <thead>
               <tr>
                 <th>Per policy, per year</th>
-                {showHeat && <th style={{ color: HEAT }}>Heat</th>}
-                {showCold && <th style={{ color: COLD }}>Cold</th>}
+                {showHeat && <th className="c-heat" style={{ color: HEAT }}>Heat</th>}
+                {showCold && <th className="c-cold" style={{ color: COLD }}>Cold</th>}
                 {showBoth && <th>Both</th>}
               </tr>
             </thead>
@@ -383,8 +379,8 @@ export const PriceSection: React.FC<{
               {rows.map(r => (
                 <tr key={r.label} data-strong={r.strong}>
                   <td style={{ color: r.strong ? 'var(--ink)' : 'var(--muted)' }}>{r.label}</td>
-                  {showHeat && <td>{cell(result.heat.price, r.pick)}</td>}
-                  {showCold && <td>{cell(result.cold.price, r.pick)}</td>}
+                  {showHeat && <td className="c-heat">{cell(result.heat.price, r.pick)}</td>}
+                  {showCold && <td className="c-cold">{cell(result.cold.price, r.pick)}</td>}
                   {showBoth && <td>{cell(result.combined, r.pick)}</td>}
                 </tr>
               ))}
@@ -430,7 +426,7 @@ export const OutlookSection: React.FC<{
   return (
     <>
       <SectionHead
-        index="04 / Outlook"
+        index="06 / Outlook"
         title={`Reprice on ${FUTURE.start}–${FUTURE.end} climate`}
         standfirst={`Each CMIP6 model measured against its own ${BASELINE.start}–${BASELINE.end} baseline, so model bias cancels. Not needed to price a one-year contract; needed to decide whether to write the line at all.`}
         aside={
@@ -480,16 +476,16 @@ export const OutlookSection: React.FC<{
                 <tbody>
                   {showHeat && (
                     <tr>
-                      <td style={{ color: HEAT }}>Heat</td>
-                      <td>{projection.heatScale != null ? `${projection.heatScale >= 1 ? '+' : ''}${((projection.heatScale - 1) * 100).toFixed(0)}%` : 'n/a'}</td>
+                      <td className="c-heat" style={{ color: HEAT, fontWeight: 600 }}>Heat</td>
+                      <td className="c-heat">{projection.heatScale != null ? `${projection.heatScale >= 1 ? '+' : ''}${((projection.heatScale - 1) * 100).toFixed(0)}%` : 'n/a'}</td>
                       <td>{result.heat.price.priceable ? money(result.heat.price.premium, currency) : '—'}</td>
                       <td>{projection.heatPremium != null ? money(projection.heatPremium, currency) : '—'}</td>
                     </tr>
                   )}
                   {showCold && (
                     <tr>
-                      <td style={{ color: COLD }}>Cold</td>
-                      <td>{projection.coldScale != null ? `${projection.coldScale >= 1 ? '+' : ''}${((projection.coldScale - 1) * 100).toFixed(0)}%` : 'n/a'}</td>
+                      <td className="c-cold" style={{ color: COLD, fontWeight: 600 }}>Cold</td>
+                      <td className="c-cold">{projection.coldScale != null ? `${projection.coldScale >= 1 ? '+' : ''}${((projection.coldScale - 1) * 100).toFixed(0)}%` : 'n/a'}</td>
                       <td>{result.cold.price.priceable ? money(result.cold.price.premium, currency) : '—'}</td>
                       <td>{projection.coldPremium != null ? money(projection.coldPremium, currency) : '—'}</td>
                     </tr>
@@ -527,7 +523,7 @@ export const PortfolioSection: React.FC<{
   return (
     <>
       <SectionHead
-        index="05 / Portfolio"
+        index="04 / Portfolio"
         title="Accumulation"
         standfirst="Every policy pays on the same index reading, so the whole book triggers together. The 1-in-200 line is a straight multiplication, and it is what capital is held against."
       />

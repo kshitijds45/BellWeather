@@ -74,15 +74,15 @@ export const AreaMap: React.FC<AreaMapProps> = ({
         [area.south, area.west],
         [area.north, area.east],
       ],
-      { color: '#eef1f2', weight: 1, fillColor: '#e05a3c', fillOpacity: 0.12, dashArray: '3 4' }
+      { color: '#1b2026', weight: 2, fillColor: '#ff7a55', fillOpacity: 0.14, dashArray: '4 4' }
     ).addTo(map);
 
     const c = centreOf(area);
     pinRef.current = L.circleMarker([c.lat, c.lon], {
-      radius: 5,
-      color: '#14181b',
+      radius: 6,
+      color: '#ffffff',
       weight: 2,
-      fillColor: '#e05a3c',
+      fillColor: '#e0401c',
       fillOpacity: 1,
     })
       .bindTooltip('Index point: every policy in this area pays on the temperature here', {
@@ -125,7 +125,7 @@ export const AreaMap: React.FC<AreaMapProps> = ({
     };
     const down = (e: any) => {
       start = e.latlng;
-      temp = L.rectangle([start, start], { color: '#efc84a', weight: 1, fillOpacity: 0.12 }).addTo(map);
+      temp = L.rectangle([start, start], { color: '#c2410c', weight: 2, fillOpacity: 0.14 }).addTo(map);
     };
     const move = (e: any) => {
       if (start && temp) temp.setBounds([start, e.latlng]);

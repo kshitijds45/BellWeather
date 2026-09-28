@@ -75,41 +75,56 @@ export const SliderField: React.FC<{
   min: number;
   max: number;
   step?: number;
-  format?: (v: number) => string;
+  unit?: string;
   hint?: string;
-}> = ({ label, value, onChange, min, max, step = 1, format, hint }) => (
-  <div>
-    <div className="flex items-baseline justify-between gap-3 mb-1.5">
-      <span className="field-label" style={{ marginBottom: 0 }}>{label}</span>
-      <span className="text-sm font-semibold shrink-0">{format ? format(value) : value}</span>
+}> = ({ label, value, onChange, min, max, step = 1, unit, hint }) => {
+  // Sliders are for feeling out a range, typing is for committing to a figure.
+  // Both edit the same value, and the typed box is not clamped to the slider's
+  // range, so a threshold outside the comfortable range is still reachable.
+  const commit = (raw: string) => {
+    const v = parseFloat(raw);
+    if (Number.isFinite(v)) onChange(v);
+  };
+
+  return (
+    <div>
+      <span className="field-label">{label}</span>
+      <div className="slider-row">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={Math.min(max, Math.max(min, value))}
+          onChange={e => onChange(parseFloat(e.target.value))}
+          aria-label={label}
+        />
+        <input
+          type="number"
+          value={Number.isFinite(value) ? value : ''}
+          step={step}
+          onChange={e => commit(e.target.value)}
+          aria-label={`${label}, typed`}
+        />
+        {unit && <span style={{ fontSize: 11, color: 'var(--muted)', width: 26 }}>{unit}</span>}
+      </div>
+      {hint && <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4 }}>{hint}</p>}
     </div>
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      onChange={e => onChange(parseFloat(e.target.value))}
-      aria-label={label}
-    />
-    <div className="flex justify-between mt-1">
-      <span style={{ fontSize: 9.5, color: 'var(--muted)' }}>{format ? format(min) : min}</span>
-      {hint && <span style={{ fontSize: 9.5, color: 'var(--muted)' }}>{hint}</span>}
-      <span style={{ fontSize: 9.5, color: 'var(--muted)' }}>{format ? format(max) : max}</span>
-    </div>
-  </div>
-);
+  );
+};
 
 export function Pills<T extends string>({
   options,
   value,
   onChange,
   label,
+  peril,
 }: {
   options: Array<[T, string]>;
   value: T;
   onChange: (v: T) => void;
   label?: string;
+  peril?: boolean;
 }) {
   return (
     <div>
@@ -120,6 +135,7 @@ export function Pills<T extends string>({
             key={key}
             className="pill"
             data-active={value === key}
+            data-peril={peril ? key : undefined}
             aria-pressed={value === key}
             onClick={() => onChange(key)}
           >

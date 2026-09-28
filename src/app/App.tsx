@@ -39,9 +39,9 @@ const SECTIONS = [
   { id: 'product', index: '01', label: 'Product' },
   { id: 'hazard', index: '02', label: 'Hazard' },
   { id: 'price', index: '03', label: 'Price' },
-  { id: 'outlook', index: '04', label: 'Outlook' },
-  { id: 'portfolio', index: '05', label: 'Portfolio' },
-  { id: 'sensitivity', index: '06', label: 'Sensitivity' },
+  { id: 'portfolio', index: '04', label: 'Portfolio' },
+  { id: 'sensitivity', index: '05', label: 'Sensitivity' },
+  { id: 'outlook', index: '06', label: 'Outlook' },
 ];
 
 const sameAssumptions = (a: Assumptions, b: Assumptions) =>
@@ -175,24 +175,34 @@ export default function App() {
     [result, models, assumptions, book]
   );
 
-  // Track which panel is in view, so the index reflects position
+  // Which panel is in view. Position-based rather than an IntersectionObserver,
+  // because the final section is short and can never satisfy a rootMargin band,
+  // so its tab would never light up. Reaching the bottom selects the last one.
   useEffect(() => {
     const root = scrollRef.current;
     if (!root || showMethod) return;
-    const observer = new IntersectionObserver(
-      entries => {
-        const visible = entries
-          .filter(e => e.isIntersecting)
-          .sort((x, y) => y.intersectionRatio - x.intersectionRatio)[0];
-        if (visible?.target.id) setActive(visible.target.id);
-      },
-      { root, rootMargin: '-20% 0px -60% 0px', threshold: [0, 0.2, 0.6] }
-    );
-    SECTIONS.forEach(sec => {
-      const el = document.getElementById(sec.id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
+
+    const update = () => {
+      if (root.scrollTop + root.clientHeight >= root.scrollHeight - 8) {
+        setActive(SECTIONS[SECTIONS.length - 1].id);
+        return;
+      }
+      const line = root.getBoundingClientRect().top + 90;
+      let current = SECTIONS[0].id;
+      SECTIONS.forEach(sec => {
+        const el = document.getElementById(sec.id);
+        if (el && el.getBoundingClientRect().top <= line) current = sec.id;
+      });
+      setActive(current);
+    };
+
+    update();
+    root.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      root.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
   }, [showMethod]);
 
   const goTo = useCallback((id: string) => {
@@ -371,19 +381,6 @@ export default function App() {
               <PriceSection result={result} peril={peril} a={assumptions} currency={currency} />
             </section>
 
-            <section id="outlook" className="doc-section">
-              <OutlookSection
-                result={result}
-                projection={projection}
-                loading={projLoading}
-                error={projError}
-                peril={peril}
-                currency={currency}
-                onRun={runProjection}
-                hasRun={models !== null}
-              />
-            </section>
-
             <section id="portfolio" className="doc-section">
               <PortfolioSection
                 result={result}
@@ -408,10 +405,22 @@ export default function App() {
                 startYear={startYear}
                 endYear={endYear}
               />
-              <footer className="mt-8 pt-4" style={{ borderTop: '1px solid var(--rule)' }}>
-                <p className="utility">{TOOL_NAME} · Built by {CREATOR}</p>
-              </footer>
             </section>
+            <section id="outlook" className="doc-section">
+              <OutlookSection
+                result={result}
+                projection={projection}
+                loading={projLoading}
+                error={projError}
+                peril={peril}
+                currency={currency}
+                onRun={runProjection}
+                hasRun={models !== null}
+              />
+            </section>
+            <footer className="doc-section" style={{ paddingTop: 18, paddingBottom: 22 }}>
+              <p className="utility">{TOOL_NAME} · Built by {CREATOR}</p>
+            </footer>
           </div>
         </div>
       )}

@@ -32,8 +32,8 @@ const pc = (v: number) => `${Math.round(v * 100)}%`;
 const YEARS = historyEnd() - HISTORY_START + 1;
 
 export const Method: React.FC = () => (
-  <div className="h-full overflow-y-auto p-5 md:p-10">
-    <div className="max-w-4xl pb-24 pt-2">
+  <div className="h-full overflow-y-auto px-5 py-7 md:px-10 md:py-10">
+    <div className="mx-auto pb-24 pt-2" style={{ maxWidth: 860 }}>
       <h2 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em' }}>Method and fine print</h2>
       <p className="text-sm mt-4" style={{ color: 'var(--muted)', maxWidth: '78ch', lineHeight: 1.6 }}>
         How {TOOL_NAME} prices heatwave and cold wave cover, where every number comes from and what it
