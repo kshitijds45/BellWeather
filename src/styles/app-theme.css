@@ -474,8 +474,11 @@ h4 {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
-  display: block;
-  margin-bottom: 5px;
+  display: flex;
+  align-items: flex-end;
+  line-height: 1.35;
+  min-height: 26px;
+  margin-bottom: 6px;
 }
 
 input[type='number'],
@@ -639,6 +642,17 @@ button:focus-visible {
 .leaflet-top,
 .leaflet-bottom {
   z-index: 400 !important;
+}
+
+/* Clear the search field and the draw controls, which sit over the top edge. */
+.leaflet-top.leaflet-left {
+  top: 56px;
+}
+
+@media (max-width: 640px) {
+  .leaflet-top.leaflet-left {
+    top: 96px;
+  }
 }
 
 .leaflet-control-attribution {

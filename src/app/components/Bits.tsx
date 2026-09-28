@@ -33,6 +33,7 @@ export const Readout: React.FC<{
   </div>
 );
 
+/** Fields share a two-line label box so their inputs line up in a grid. */
 export const NumberField: React.FC<{
   label: string;
   value: number;

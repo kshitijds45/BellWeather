@@ -66,7 +66,7 @@ export const ProductSection: React.FC<{
           head="Cover"
           aside={<Pills peril value={peril} onChange={onPerilChange} options={[['heat', 'Heat'], ['cold', 'Cold'], ['both', 'Both']]} />}
         >
-          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
             {peril !== 'cold' && (
               <SliderField
                 label="Heat trigger, daily max at or above"
@@ -113,16 +113,14 @@ export const ProductSection: React.FC<{
         </PanelBlock>
 
         <PanelBlock head="Limits and uptake">
-          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="grid grid-cols-2 gap-3">
-              <NumberField label="Payout per event" value={a.payoutPerEvent} onChange={v => set({ payoutPerEvent: Math.max(1, v) })} prefix={currency.symbol} min={1} step={25} />
-              <label className="block">
-                <span className="field-label">Currency</span>
-                <select value={currency.code} onChange={e => onCurrencyChange(e.target.value)}>
-                  {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
-                </select>
-              </label>
-            </div>
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
+            <NumberField label="Payout per event" value={a.payoutPerEvent} onChange={v => set({ payoutPerEvent: Math.max(1, v) })} prefix={currency.symbol} min={1} step={25} />
+            <label className="block">
+              <span className="field-label">Currency</span>
+              <select value={currency.code} onChange={e => onCurrencyChange(e.target.value)}>
+                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
+              </select>
+            </label>
             <SliderField
               label="Annual limit, events paid"
               value={a.annualLimit}
@@ -145,7 +143,7 @@ export const ProductSection: React.FC<{
         </PanelBlock>
 
         <PanelBlock head="Pricing basis">
-          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
             <SliderField
               label="Target combined ratio"
               value={Math.round(a.targetCombinedRatio * 100)}
