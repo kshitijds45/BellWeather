@@ -170,17 +170,27 @@ export const ProductSection: React.FC<{
                 max={6}
                 step={0.5}
                 unit="pp"
-                hint={a.volumeDiscountPerDoubling > 0 ? `Applied: ${pct(effectiveExpenseRatio(a, book), 1)}` : 'Off'}
+                hint={
+                  a.volumeDiscountPerDoubling > 0
+                    ? `${pct(effectiveExpenseRatio(a, book), 1)} at ${count(book, currency)} policies`
+                    : 'Off. Expense ratio is flat at every book size.'
+                }
               />
-              <div className="mt-3.5">
-                <NumberField
-                  label="Reference book size"
-                  value={a.referencePolicies}
-                  onChange={v => set({ referencePolicies: Math.max(1, Math.round(v)) })}
-                  step={1000}
-                  min={1}
-                />
-              </div>
+              {a.volumeDiscountPerDoubling > 0 && (
+                <div className="mt-3.5">
+                  <NumberField
+                    label="Reference book size"
+                    value={a.referencePolicies}
+                    onChange={v => set({ referencePolicies: Math.max(1, Math.round(v)) })}
+                    step={1000}
+                    min={1}
+                  />
+                  <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4 }}>
+                    The book size at which the expense ratio above applies. Each doubling from here
+                    removes the discount, each halving adds it.
+                  </p>
+                </div>
+              )}
             </div>
             {invalid && (
               <p className="text-xs" style={{ color: HEAT }}>

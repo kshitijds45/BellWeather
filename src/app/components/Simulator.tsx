@@ -155,7 +155,7 @@ export const SimulatorSection: React.FC<{
       <div className="section-body">
         <div className="panel panel-pad mb-3">
           <p className="field-label">Parameter to sweep</p>
-          <div className="pill-select mb-4 flex-wrap">
+          <div className="sweep-grid mb-4">
             {SPECS.filter(s => {
               if (s.key === 'heatThreshold' && peril === 'cold') return false;
               if (s.key === 'coldThreshold' && peril === 'heat') return false;

@@ -144,7 +144,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationSelect
             onFocus={() => searchResults.length > 0 && setShowResults(true)}
             onBlur={() => setTimeout(() => setShowResults(false), 150)}
             className="pl-10 h-9 text-sm"
-            style={{ background: 'var(--void)', borderColor: 'var(--rule-strong)', color: 'var(--ink)' }}
+            style={{ background: 'var(--void)', borderColor: 'var(--rule-strong)', color: 'var(--ink)', paddingLeft: 34 }}
           />
         </div>
         <button onClick={() => runSearch(searchQuery)} disabled={isSearching} className="btn-solid px-4 h-9 inline-flex items-center gap-2">
