@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, ArrowRight, ArrowLeft } from 'lucide-react';
 import { TOOL_NAME, TOOL_TAGLINE, CREATOR } from '../branding';
+import { Logo } from './Logo';
 
 const STORAGE_KEY = 'bellweather-tour-seen-v1';
 
@@ -66,8 +67,11 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
         <div className="p-6">
           {first && (
             <div className="mb-5 pb-4" style={{ borderBottom: '1px solid var(--rule)' }}>
-              <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em', lineHeight: 1 }}>{TOOL_NAME}</h1>
-              <p className="text-xs mt-1.5" style={{ color: 'var(--muted)' }}>{TOOL_TAGLINE}</p>
+              <div className="flex items-center gap-3">
+                <Logo size={34} weight={30} />
+                <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em', lineHeight: 1 }}>{TOOL_NAME}</h1>
+              </div>
+              <p className="text-xs mt-2.5" style={{ color: 'var(--muted)' }}>{TOOL_TAGLINE}</p>
             </div>
           )}
           <h2 className="mb-2.5" style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em' }}>{STEPS[step].title}</h2>

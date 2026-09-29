@@ -15,6 +15,7 @@ import {
 import { SimulatorSection } from './components/Simulator';
 import { Method } from './components/Method';
 import { Tour, hasSeenTour, markTourSeen } from './components/Tour';
+import { Logo } from './components/Logo';
 import { TOOL_NAME, CREATOR } from './branding';
 import {
   Bounds,
@@ -250,15 +251,7 @@ export default function App() {
       <header className="topbar">
         <div className="topbar-row">
           <button onClick={backToTop} className="wordmark">
-            <span
-              aria-hidden
-              style={{
-                width: 16,
-                height: 16,
-                borderRadius: 1,
-                background: 'linear-gradient(140deg, var(--heat-cool) 0%, var(--heat-mild) 50%, var(--heat-hot) 100%)',
-              }}
-            />
+            <Logo size={22} weight={34} />
             <span className="wordmark-text">{TOOL_NAME}</span>
           </button>
 
