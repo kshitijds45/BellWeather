@@ -39,14 +39,14 @@ interface ParamSpec {
 }
 
 const SPECS: ParamSpec[] = [
-  { key: 'heatThreshold', label: 'Heat trigger temperature', unit: '°C', from: 24, to: 36, step: 1, scale: 1, decimals: 1 },
-  { key: 'coldThreshold', label: 'Cold trigger temperature', unit: '°C', from: -6, to: 4, step: 1, scale: 1, decimals: 1 },
+  { key: 'heatThreshold', label: 'Heat trigger', unit: '°C', from: 24, to: 36, step: 1, scale: 1, decimals: 1 },
+  { key: 'coldThreshold', label: 'Cold trigger', unit: '°C', from: -6, to: 4, step: 1, scale: 1, decimals: 1 },
   { key: 'payoutPerEvent', label: 'Payout per event', unit: '', from: 50, to: 500, step: 50, scale: 1, decimals: 0 },
-  { key: 'annualLimit', label: 'Maximum events a year', unit: '', from: 1, to: 8, step: 1, scale: 1, decimals: 0 },
-  { key: 'targetCombinedRatio', label: 'Target combined ratio', unit: '%', from: 70, to: 100, step: 5, scale: 0.01, decimals: 0 },
-  { key: 'expenseRatio', label: 'Expense ratio', unit: '%', from: 10, to: 50, step: 5, scale: 0.01, decimals: 0 },
-  { key: 'adoption', label: 'Adoption rate', unit: '%', from: 0.25, to: 5, step: 0.25, scale: 0.01, decimals: 2 },
-  { key: 'volumeDiscountPerDoubling', label: 'Volume discount per doubling', unit: 'pp', from: 0, to: 5, step: 0.5, scale: 0.01, decimals: 1 },
+  { key: 'annualLimit', label: 'Payouts a year cap', unit: '', from: 1, to: 8, step: 1, scale: 1, decimals: 0 },
+  { key: 'targetCombinedRatio', label: 'Claims and costs share', unit: '%', from: 70, to: 100, step: 5, scale: 0.01, decimals: 0 },
+  { key: 'expenseRatio', label: 'Running costs share', unit: '%', from: 10, to: 50, step: 5, scale: 0.01, decimals: 0 },
+  { key: 'adoption', label: 'Share who buy it', unit: '%', from: 0.25, to: 5, step: 0.25, scale: 0.01, decimals: 2 },
+  { key: 'volumeDiscountPerDoubling', label: 'Volume saving', unit: 'pp', from: 0, to: 5, step: 0.5, scale: 0.01, decimals: 1 },
 ];
 
 const MAX_ROWS = 30;
@@ -101,15 +101,15 @@ export const SimulatorSection: React.FC<{
   const downloadCsv = () => {
     const head = [
       spec.label,
-      'Events a year',
-      'Expected payout',
-      'Annual premium',
-      'Loss ratio',
-      '1-in-200 payout',
-      'Return on capital',
-      'Policies',
-      'Premium income',
-      'Expected annual payout',
+      'Times a year',
+      'Payout in a normal year',
+      'Yearly price',
+      'Claims share',
+      'Payout in a 1-in-200 year',
+      'Return on reserve',
+      'Customers',
+      'Money taken in',
+      'Paid out in a normal year',
     ];
     const body = rows.map(r => [
       spec.key === 'payoutPerEvent' ? `${currency.symbol}${r.display}` : fmtParam(r.display),
@@ -136,8 +136,8 @@ export const SimulatorSection: React.FC<{
     <>
       <SectionHead
         index="06 / Sensitivity"
-        title="Parameter sweep"
-        standfirst="One parameter swept across a range, everything else held. Each row is a full recalculation across the whole record, so moving a trigger re-counts every event rather than interpolating."
+        title="Test one setting"
+        standfirst="Change one setting across a range and watch what happens to the price, while everything else stays fixed. Each row is worked out from scratch against the full weather record, so moving a temperature really does re-count every event."
         aside={
           rows.length > 0 && (
             <button
@@ -154,7 +154,7 @@ export const SimulatorSection: React.FC<{
 
       <div className="section-body">
         <div className="panel panel-pad mb-3">
-          <p className="field-label">Parameter to sweep</p>
+          <p className="field-label">Setting to test</p>
           <div className="sweep-grid mb-4">
             {SPECS.filter(s => {
               if (s.key === 'heatThreshold' && peril === 'cold') return false;
@@ -188,14 +188,14 @@ export const SimulatorSection: React.FC<{
               <thead>
                 <tr>
                   <th>{spec.label}</th>
-                  <th>Events a year</th>
-                  <th>Expected payout</th>
-                  <th>Premium</th>
-                  <th>Loss ratio</th>
+                  <th>Times a year</th>
+                  <th>Payout, normal year</th>
+                  <th>Yearly price</th>
+                  <th>Claims share</th>
                   <th>1-in-200</th>
-                  <th>Return on capital</th>
-                  <th>Policies</th>
-                  <th>Premium income</th>
+                  <th>Return on reserve</th>
+                  <th>Customers</th>
+                  <th>Money taken in</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,9 +222,9 @@ export const SimulatorSection: React.FC<{
               </tbody>
             </table>
             <Note>
-              One at a time is the method and the limitation: real decisions move several parameters
-              together and this cannot show the interactions. A dash marks where the trigger stops
-              being insurable from this record.
+              Changing one thing at a time is what makes this readable, and also what limits it. Real
+              decisions move several settings at once, and this cannot show how they interact. A dash
+              marks the point where the trigger stops firing at all in the record.
             </Note>
           </div>
         )}

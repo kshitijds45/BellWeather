@@ -51,8 +51,8 @@ export const ProductSection: React.FC<{
     <>
       <SectionHead
         index="01 / Product"
-        title="Contract terms"
-        standfirst="Triggers default to the Met Office heatwave definition and the Cold Weather Payment rule. Every control recalculates from the stored record with no new data request."
+        title="Set the policy"
+        standfirst="Set the rules of the policy here: how hot or cold it has to get, for how long, and how much it pays. The starting values come from official UK definitions. Everything below updates as you change them."
         aside={
           !isDefault && (
             <button onClick={onReset} className="btn-ghost">Reset</button>
@@ -69,7 +69,7 @@ export const ProductSection: React.FC<{
           <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
             {peril !== 'cold' && (
               <SliderField
-                label="Heat trigger, daily max at or above"
+                label="Pays out when the day reaches"
                 value={a.heatThreshold}
                 onChange={v => set({ heatThreshold: v })}
                 min={20}
@@ -80,7 +80,7 @@ export const ProductSection: React.FC<{
             )}
             {peril !== 'cold' && (
               <SliderField
-                label="Consecutive days to qualify"
+                label="For this many days in a row"
                 value={a.heatDuration}
                 onChange={v => set({ heatDuration: Math.round(v) })}
                 min={1}
@@ -90,7 +90,7 @@ export const ProductSection: React.FC<{
             )}
             {peril !== 'heat' && (
               <SliderField
-                label="Cold trigger, daily mean at or below"
+                label="Pays out when the day averages"
                 value={a.coldThreshold}
                 onChange={v => set({ coldThreshold: v })}
                 min={-15}
@@ -101,7 +101,7 @@ export const ProductSection: React.FC<{
             )}
             {peril !== 'heat' && (
               <SliderField
-                label="Days per paying run"
+                label="Pays again every this many days"
                 value={a.coldDuration}
                 onChange={v => set({ coldDuration: Math.round(v) })}
                 min={1}
@@ -112,9 +112,9 @@ export const ProductSection: React.FC<{
           </div>
         </PanelBlock>
 
-        <PanelBlock head="Limits and uptake">
+        <PanelBlock head="Payout and take-up">
           <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
-            <NumberField label="Payout per event" value={a.payoutPerEvent} onChange={v => set({ payoutPerEvent: Math.max(1, v) })} prefix={currency.symbol} min={1} step={25} />
+            <NumberField label="Paid out per event" value={a.payoutPerEvent} onChange={v => set({ payoutPerEvent: Math.max(1, v) })} prefix={currency.symbol} min={1} step={25} />
             <label className="block">
               <span className="field-label">Currency</span>
               <select value={currency.code} onChange={e => onCurrencyChange(e.target.value)}>
@@ -122,7 +122,7 @@ export const ProductSection: React.FC<{
               </select>
             </label>
             <SliderField
-              label="Annual limit, events paid"
+              label="Most payouts in one year"
               value={a.annualLimit}
               onChange={v => set({ annualLimit: Math.round(v) })}
               min={1}
@@ -130,22 +130,22 @@ export const ProductSection: React.FC<{
               unit=""
             />
             <SliderField
-              label="Adoption rate"
+              label="Share of people who buy it"
               value={+(a.adoption * 100).toFixed(2)}
               onChange={v => set({ adoption: v / 100 })}
               min={0.05}
               max={10}
               step={0.05}
               unit="%"
-              hint={`${count(book, currency)} policies in force`}
+              hint={`${count(book, currency)} customers`}
             />
           </div>
         </PanelBlock>
 
-        <PanelBlock head="Pricing basis">
+        <PanelBlock head="How the price is set">
           <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
             <SliderField
-              label="Target combined ratio"
+              label="Claims and costs as share of price"
               value={Math.round(a.targetCombinedRatio * 100)}
               onChange={v => set({ targetCombinedRatio: v / 100 })}
               min={50}
@@ -153,17 +153,17 @@ export const ProductSection: React.FC<{
               unit="%"
             />
             <SliderField
-              label="Expense ratio"
+              label="Running costs as share of price"
               value={Math.round(a.expenseRatio * 100)}
               onChange={v => set({ expenseRatio: v / 100 })}
               min={5}
               max={60}
               unit="%"
-              hint={invalid ? 'Exceeds combined ratio' : `Loss ratio ${pct(a.targetCombinedRatio - a.expenseRatio)}`}
+              hint={invalid ? 'Too high, nothing left for claims' : `Leaves ${pct(a.targetCombinedRatio - a.expenseRatio)} for claims`}
             />
             <div>
               <SliderField
-                label="Volume discount per doubling"
+                label="Cost saving each time the book doubles"
                 value={+(a.volumeDiscountPerDoubling * 100).toFixed(1)}
                 onChange={v => set({ volumeDiscountPerDoubling: v / 100 })}
                 min={0}
@@ -172,8 +172,8 @@ export const ProductSection: React.FC<{
                 unit="pp"
                 hint={
                   a.volumeDiscountPerDoubling > 0
-                    ? `${pct(effectiveExpenseRatio(a, book), 1)} at ${count(book, currency)} policies`
-                    : 'Off. Expense ratio is flat at every book size.'
+                    ? `Costs run at ${pct(effectiveExpenseRatio(a, book), 1)} with ${count(book, currency)} customers`
+                    : 'Off. Costs stay the same share however many customers you have.'
                 }
               />
               {a.volumeDiscountPerDoubling > 0 && (
@@ -186,15 +186,15 @@ export const ProductSection: React.FC<{
                     min={1}
                   />
                   <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4 }}>
-                    The book size at which the expense ratio above applies. Each doubling from here
-                    removes the discount, each halving adds it.
+                    The number of customers at which the running cost above applies. Every doubling
+                    from here takes the saving off, every halving adds it back.
                   </p>
                 </div>
               )}
             </div>
             {invalid && (
               <p className="text-xs" style={{ color: HEAT }}>
-                The combined ratio must exceed the expense ratio, or nothing is left for claims.
+                Running costs cannot be bigger than claims and costs combined, or there is nothing left to pay claims with.
               </p>
             )}
           </div>
@@ -240,8 +240,8 @@ export const RiskSection: React.FC<{
     <>
       <SectionHead
         index="02 / Hazard"
-        title={`Event frequency, ${startYear} to ${endYear}`}
-        standfirst="Counted from ECMWF reanalysis at the index point. Pricing uses the trend-adjusted column, which restates every past year at today's climate."
+        title="How often it has happened"
+        standfirst="How many times your trigger would have fired at this spot, every year since 1991. The adjusted column corrects for the fact that the early years were cooler than today, so old records do not make the risk look smaller than it is."
       />
 
       <div className="section-body">
@@ -257,14 +257,14 @@ export const RiskSection: React.FC<{
 
         {result && !loading && (
           <div className="space-y-3">
-            <PanelBlock head="Frequency and trend">
+            <PanelBlock head="Frequency and warming trend">
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>Peril</th>
-                    <th>Events a year, as recorded</th>
-                    <th>Trend adjusted</th>
-                    <th>Seasonal trend / decade</th>
+                    <th>Times a year, as it happened</th>
+                    <th>Adjusted for warming</th>
+                    <th>Warming per decade</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -285,7 +285,7 @@ export const RiskSection: React.FC<{
                     </tr>
                   )}
                   <tr>
-                    <td style={{ color: 'var(--muted)' }}>Worst year</td>
+                    <td style={{ color: 'var(--muted)' }}>Worst year on record</td>
                     <td>{worst.v > 0 ? worst.y : '—'}</td>
                     <td>{worst.v > 0 ? `${worst.v} event${worst.v === 1 ? '' : 's'}` : '—'}</td>
                     <td>{result.heat.frequency.model}</td>
@@ -294,7 +294,7 @@ export const RiskSection: React.FC<{
               </table>
             </PanelBlock>
 
-            <PanelBlock head="Events per year, as recorded">
+            <PanelBlock head="Times the trigger fired, each year">
               <div className="h-44 -ml-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
@@ -328,7 +328,7 @@ export const PriceSection: React.FC<{
   if (!result) {
     return (
       <>
-        <SectionHead index="03 / Price" title="Rate per policy" />
+        <SectionHead index="03 / Price" title="What to charge" />
         <div className="section-body"><Empty>Waiting for the temperature record.</Empty></div>
       </>
     );
@@ -341,15 +341,15 @@ export const PriceSection: React.FC<{
   const separateTail = result.heat.price.tailPayout + result.cold.price.tailPayout;
 
   const rows: Array<{ label: string; pick: (p: Price) => string; strong?: boolean }> = [
-    { label: 'Expected payout', pick: p => money(p.expectedPayout, currency) },
-    { label: 'Expenses', pick: p => money(p.expenses, currency) },
-    { label: 'Margin', pick: p => money(p.margin, currency) },
-    { label: 'Annual premium', pick: p => money(p.premium, currency), strong: true },
-    { label: 'Loss ratio', pick: p => pct(p.lossRatio) },
-    { label: 'Expense ratio', pick: p => pct(p.expenseRatio) },
-    { label: '1-in-200 payout', pick: p => money(p.tailPayout, currency, 0) },
-    { label: 'Capital needed', pick: p => money(p.capital, currency, 0) },
-    { label: 'Return on capital', pick: p => pct(p.returnOnCapital) },
+    { label: 'Payouts in a normal year', pick: p => money(p.expectedPayout, currency) },
+    { label: 'Running costs', pick: p => money(p.expenses, currency) },
+    { label: 'Profit', pick: p => money(p.margin, currency) },
+    { label: 'Yearly price', pick: p => money(p.premium, currency), strong: true },
+    { label: 'Share spent on claims', pick: p => pct(p.lossRatio) },
+    { label: 'Share spent on costs', pick: p => pct(p.expenseRatio) },
+    { label: 'Payout in a 1-in-200 year', pick: p => money(p.tailPayout, currency, 0) },
+    { label: 'Money held in reserve', pick: p => money(p.capital, currency, 0) },
+    { label: 'Return on that reserve', pick: p => pct(p.returnOnCapital) },
   ];
 
   const cell = (p: Price, f: (p: Price) => string) => (p.priceable ? f(p) : '—');
@@ -358,18 +358,18 @@ export const PriceSection: React.FC<{
     <>
       <SectionHead
         index="03 / Price"
-        title="Rate per policy"
-        standfirst={`Premium solved so claims and expenses take ${pct(a.targetCombinedRatio)} of it. Capital is the 1-in-200 payout less expected claims, the Solvency UK basis.`}
+        title="What to charge"
+        standfirst={`The yearly price per customer. It is set so that ${pct(a.targetCombinedRatio)} of the premium goes on claims and running costs, leaving the rest as profit. Capital is the spare money an insurer must hold back for a very bad year.`}
       />
 
       <div className="section-body space-y-3">
         <Readout
           items={[
-            { label: 'Annual premium', value: sel.priceable ? money(sel.premium, currency) : '—', note: perilLabel[peril] },
-            { label: 'Loss ratio', value: sel.priceable ? pct(sel.lossRatio) : '—', note: 'FCA: motor 54%, home 46%' },
-            { label: '1-in-200 payout', value: sel.priceable ? money(sel.tailPayout, currency, 0) : '—' },
-            { label: 'Capital needed', value: sel.priceable ? money(sel.capital, currency, 0) : '—' },
-            { label: 'Return on capital', value: sel.priceable ? pct(sel.returnOnCapital) : '—' },
+            { label: 'Yearly price', value: sel.priceable ? money(sel.premium, currency) : '—', note: perilLabel[peril] },
+            { label: 'Share spent on claims', value: sel.priceable ? pct(sel.lossRatio) : '—', note: 'UK car insurance: 54%. Home: 46%' },
+            { label: 'Payout in a 1-in-200 year', value: sel.priceable ? money(sel.tailPayout, currency, 0) : '—' },
+            { label: 'Money held in reserve', value: sel.priceable ? money(sel.capital, currency, 0) : '—' },
+            { label: 'Return on that reserve', value: sel.priceable ? pct(sel.returnOnCapital) : '—' },
           ]}
         />
 
@@ -377,7 +377,7 @@ export const PriceSection: React.FC<{
           <table className="data-table">
             <thead>
               <tr>
-                <th>Per policy, per year</th>
+                <th>Per customer, per year</th>
                 {showHeat && <th className="c-heat" style={{ color: HEAT }}>Heat</th>}
                 {showCold && <th className="c-cold" style={{ color: COLD }}>Cold</th>}
                 {showBoth && <th>Both</th>}
@@ -397,12 +397,15 @@ export const PriceSection: React.FC<{
         </div>
 
         {((showHeat && !result.heat.price.priceable) || (showCold && !result.cold.price.priceable)) && (
-          <Note>A dash means no qualifying event in the record. Not zero risk: the history cannot support a price at this trigger.</Note>
+          <Note>A dash means this trigger never fired in the whole record. That does not mean it is impossible, only that there is nothing here to base a price on.</Note>
         )}
         {showBoth && result.heat.price.priceable && result.cold.price.priceable && (
           <Note>
-            Bundling does not change the premium, since expected claims add. It changes the tail: 1-in-200 falls from{' '}
-            {money(separateTail, currency, 0)} to {money(result.combined.tailPayout, currency, 0)}. Same premium, less capital.
+            Selling heat and cold together costs the same as selling them apart, because the expected
+            payouts simply add up. What it does change is the worst case. A brutal summer and a brutal
+            winter almost never land in the same year, so the 1-in-200 payout drops from{' '}
+            {money(separateTail, currency, 0)} to {money(result.combined.tailPayout, currency, 0)}. Same
+            price, less money tied up in reserve.
           </Note>
         )}
       </div>
@@ -435,8 +438,8 @@ export const OutlookSection: React.FC<{
     <>
       <SectionHead
         index="06 / Outlook"
-        title={`Reprice on ${FUTURE.start}–${FUTURE.end} climate`}
-        standfirst={`Each CMIP6 model measured against its own ${BASELINE.start}–${BASELINE.end} baseline, so model bias cancels. Not needed to price a one-year contract; needed to decide whether to write the line at all.`}
+        title="The price in 2050"
+        standfirst={`What the same policy would cost in a warmer world. Climate models run slightly hot or cold against real weather, so each one is compared against its own past rather than against reality, which cancels that bias out. You do not need this to price a policy for next year. You need it to decide whether to launch the product at all.`}
         aside={
           !hasRun && !loading ? (
             <button onClick={onRun} className="btn-solid inline-flex items-center gap-1.5">
@@ -448,7 +451,7 @@ export const OutlookSection: React.FC<{
 
       <div className="section-body space-y-3">
         {!hasRun && !loading && !error && (
-          <Empty>Fifty years of daily output across two models is the heaviest request here, so it runs only on request and cannot delay the pricing above.</Empty>
+          <Empty>This pulls fifty years of daily forecasts from two climate models, which is by far the slowest thing on the page. It only runs when you ask, so it can never hold up the pricing above.</Empty>
         )}
         {loading && (
           <div className="panel panel-pad flex items-center gap-2 text-xs" style={{ color: 'var(--muted)' }}>
@@ -466,8 +469,8 @@ export const OutlookSection: React.FC<{
           <>
             <Readout
               items={[
-                { label: 'Premium today', value: now?.priceable ? money(now.premium, currency) : '—' },
-                { label: `Premium ${FUTURE.start}–${FUTURE.end}`, value: future != null ? money(future, currency) : '—', accent: change != null && change > 0 ? HEAT : undefined },
+                { label: 'Price today', value: now?.priceable ? money(now.premium, currency) : '—' },
+                { label: `Price in ${FUTURE.start}–${FUTURE.end}`, value: future != null ? money(future, currency) : '—', accent: change != null && change > 0 ? HEAT : undefined },
                 { label: 'Change', value: change != null ? `${change >= 0 ? '+' : ''}${(change * 100).toFixed(0)}%` : '—', accent: change != null && change > 0 ? HEAT : COLD },
               ]}
             />
@@ -476,9 +479,9 @@ export const OutlookSection: React.FC<{
                 <thead>
                   <tr>
                     <th>Peril</th>
-                    <th>Frequency change</th>
-                    <th>Premium today</th>
-                    <th>Premium then</th>
+                    <th>Change in how often</th>
+                    <th>Price today</th>
+                    <th>Price then</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -501,7 +504,7 @@ export const OutlookSection: React.FC<{
                 </tbody>
               </table>
             </div>
-            <Note>Heat and cold move in opposite directions. A heat-only book carries a rising claims cost it cannot reprice mid-term; holding both is a natural hedge. High emissions pathway, so read as an upper case.</Note>
+            <Note>Heat and cold move in opposite directions as the world warms, so selling only heat cover leaves you exposed to a cost that keeps climbing, while selling both balances out. These projections assume high emissions, so treat them as the worse end of the range.</Note>
           </>
         )}
       </div>
@@ -532,8 +535,8 @@ export const PortfolioSection: React.FC<{
     <>
       <SectionHead
         index="04 / Portfolio"
-        title="Accumulation"
-        standfirst="Every policy pays on the same index reading, so the whole book triggers together. The 1-in-200 line is a straight multiplication, and it is what capital is held against."
+        title="Selling it at scale"
+        standfirst="What it looks like if you sell this across a whole city. Because every customer is covered by the same thermometer reading, they all get paid on the same day. That is why the worst-year figure is simply one customer multiplied by all of them."
       />
 
       <div className="section-body space-y-3">
@@ -567,15 +570,15 @@ export const PortfolioSection: React.FC<{
           <>
             <Readout
               items={[
-                { label: `Population, ${POPULATION_YEAR}`, value: count(population, currency) },
-                { label: 'Policies in force', value: count(n, currency), note: `${pct(a.adoption, a.adoption < 0.01 ? 2 : 1)} adoption` },
-                { label: 'Premium income', value: sel.priceable ? moneyShort(n * sel.premium, currency) : '—' },
-                { label: 'Expected payout', value: moneyShort(n * sel.expectedPayout, currency) },
-                { label: '1-in-200 payout', value: moneyShort(n * sel.tailPayout, currency), accent: HEAT },
-                { label: 'Capital needed', value: moneyShort(n * sel.capital, currency) },
+                { label: `People living here, ${POPULATION_YEAR}`, value: count(population, currency) },
+                { label: 'Customers', value: count(n, currency), note: `${pct(a.adoption, a.adoption < 0.01 ? 2 : 1)} of people buy it` },
+                { label: 'Money taken in', value: sel.priceable ? moneyShort(n * sel.premium, currency) : '—' },
+                { label: 'Paid out in a normal year', value: moneyShort(n * sel.expectedPayout, currency) },
+                { label: 'Paid out in a 1-in-200 year', value: moneyShort(n * sel.tailPayout, currency), accent: HEAT },
+                { label: 'Money held in reserve', value: moneyShort(n * sel.capital, currency) },
               ]}
             />
-            <Note>Reanalysis resolves at 9 to 25 km, so this is one index for the whole area. Diversification comes only from writing in places whose weather does not move together.</Note>
+            <Note>The weather data covers squares roughly 9 to 25 km across, so one reading stands for the whole area. Spreading risk means selling in cities whose weather does not move together, not selling more in one city.</Note>
           </>
         )}
       </div>

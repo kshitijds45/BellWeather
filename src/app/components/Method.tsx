@@ -4,18 +4,15 @@ import { DEFAULTS } from '../services/RiskModel';
 import { HISTORY_START, historyEnd, BASELINE, FUTURE, CLIMATE_MODELS, POPULATION_YEAR } from '../services/ClimateData';
 
 /**
- * Method, grouped to match the analysis sections rather than by topic, so
- * anyone questioning a figure on screen can jump to the panel it came from.
+ * Method, grouped to match the analysis panels and written for someone with no
+ * insurance background. Every technical term is defined the first time it is
+ * used, and nothing has been dropped to make it simpler.
  */
 
 const YEARS = historyEnd() - HISTORY_START + 1;
 const pc = (v: number) => `${Math.round(v * 100)}%`;
 
-const Group: React.FC<{ index: string; title: string; children: React.ReactNode }> = ({
-  index,
-  title,
-  children,
-}) => (
+const Group: React.FC<{ index: string; title: string; children: React.ReactNode }> = ({ index, title, children }) => (
   <section className="pt-7 mt-7" style={{ borderTop: '1px solid var(--rule-strong)' }}>
     <p className="section-index">{index}</p>
     <h3 className="mt-1 mb-4" style={{ fontSize: 21, fontWeight: 600, letterSpacing: '-0.025em' }}>
@@ -33,9 +30,7 @@ const Sub: React.FC<{ title: string; children: React.ReactNode }> = ({ title, ch
 );
 
 const P: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--ink-soft)' }}>
-    {children}
-  </p>
+  <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--ink-soft)' }}>{children}</p>
 );
 
 const F: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -72,313 +67,358 @@ export const Method: React.FC = () => (
 
       <p className="section-index">Method</p>
       <h2 className="mt-1" style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.025em' }}>
-        Sources, formulas and limits
+        How every number is worked out
       </h2>
       <p className="text-sm mt-4 leading-relaxed" style={{ color: 'var(--muted)' }}>
-        Grouped to match the analysis panels, so any figure on screen can be traced to the method
-        behind it. Every request URL is written to the browser console, so the underlying data can be
-        checked independently.
+        Laid out in the same order as the panels, so any figure on screen can be traced back to how it
+        was calculated. No insurance background needed. Every web request the tool makes is written to
+        the browser console, so the raw data can be checked independently.
       </p>
 
-      {/* ------------------------------------------------------------------ */}
-      <Group index="01 / Product" title="What is being priced">
+      {/* ---------------------------------------------------------------- */}
+      <Group index="01 / Product" title="What is being sold">
         <P>
-          Parametric cover pays a fixed sum when a temperature index crosses a defined line. There is
-          no claim, no inspection and no loss adjuster, because there is nothing to assess. This is
-          what makes the product priceable from temperature data alone: a conventional policy needs a
-          model of damage, whereas here the payout is fixed by contract, so the only uncertainty is
-          how often the trigger fires.
+          This is insurance that pays a fixed sum whenever the temperature crosses an agreed line. No
+          claim form, no inspection, no assessor deciding what your loss was worth. If the thermometer
+          crosses the line, the money goes out. The industry calls this parametric cover, because the
+          payout depends on a measured parameter rather than on proven damage.
+        </P>
+        <P>
+          That is what makes it possible to price from weather data alone. Ordinary insurance has to
+          guess how much damage an event causes, which is hard. Here the payout is written into the
+          contract, so the only open question is how often the temperature crosses the line.
         </P>
 
-        <Sub title="Trigger definitions">
+        <Sub title="When it pays out">
           <P>
-            Both defaults are official UK definitions rather than judgement, which matters because a
-            trigger a counterparty recognises is far easier to sell and to defend.
+            The starting settings are not invented. They copy two official UK definitions, which
+            matters because a trigger people already recognise is far easier to explain and to sell.
           </P>
           <Table
-            head={['Peril', 'Default', 'Source']}
+            head={['Peril', 'Default setting', 'Where it comes from']}
             rows={[
-              ['Heatwave', `${DEFAULTS.heatDuration}+ consecutive days with a daily maximum at or above ${DEFAULTS.heatThreshold}°C`, 'Met Office heatwave definition. 28°C is the Greater London threshold'],
-              ['Cold wave', `Each run of ${DEFAULTS.coldDuration} consecutive days with a daily mean at or below ${DEFAULTS.coldThreshold}°C`, 'UK Cold Weather Payment trigger, itself effectively a parametric scheme'],
+              ['Heatwave', `${DEFAULTS.heatDuration} days in a row where the day reaches at least ${DEFAULTS.heatThreshold}°C`, 'The Met Office definition of a heatwave. 28°C is the figure used for Greater London'],
+              ['Cold wave', `Every ${DEFAULTS.coldDuration} days in a row where the day averages ${DEFAULTS.coldThreshold}°C or below`, 'The trigger for the UK Cold Weather Payment, a government scheme that already works this way'],
             ]}
           />
           <P>
-            Counting differs between the two, following each scheme. A qualifying heat run is one
-            heatwave however long it lasts, and a new run after a break is a new event. For cold,
-            each full run pays, so a fourteen day spell at the seven day setting pays twice.
+            The two are counted slightly differently, following their own rules. A hot spell counts as
+            one heatwave however long it drags on, and a fresh spell after a break counts as a new one.
+            A cold spell pays again for every complete run, so fourteen cold days pay twice at the
+            seven day setting, exactly as the government scheme does.
           </P>
         </Sub>
 
-        <Sub title="What each control does">
+        <Sub title="What each control changes">
           <Table
-            head={['Control', 'Effect']}
+            head={['Control', 'What it does']}
             rows={[
-              ['Payout per event', 'Scales every money figure. Leaves every ratio unchanged, so it sets the size of the product, not its economics'],
-              ['Annual limit', 'Caps events paid per peril per year, which caps the worst case per policy and therefore the capital'],
-              ['Adoption rate', 'Policies in force as a share of the area population. Affects the portfolio, and the price only if a volume discount is set'],
-              ['Target combined ratio', 'Claims plus expenses as a share of premium. What the premium is solved to hit'],
-              ['Expense ratio', 'The share of premium consumed by expenses at the reference book size'],
-              ['Volume discount', 'Percentage points removed from the expense ratio per doubling of the book'],
-              ['Reference book size', 'The book size at which the stated expense ratio applies. The anchor point of the discount curve'],
+              ['Paid out per event', 'Scales every money figure up or down. It changes the size of the policy, not whether it is good value, because all the percentages stay the same'],
+              ['Most payouts in one year', 'Caps how many times one customer can be paid in a year. This is what limits the insurer\'s worst case'],
+              ['Share of people who buy it', 'Turns the local population into a customer count. Affects the city-wide totals, and the price only if the volume saving is switched on'],
+              ['Claims and costs as share of price', 'The target the price is solved to hit. Anything under 100% means the insurer makes money on the underwriting'],
+              ['Running costs as share of price', 'How much of each premium is eaten by selling and administering the policy'],
+              ['Volume saving', 'How much cheaper the running costs get each time the customer base doubles'],
+              ['Reference book size', 'The customer count at which the running cost figure above is true. The anchor for the volume saving'],
             ]}
           />
         </Sub>
       </Group>
 
-      {/* ------------------------------------------------------------------ */}
-      <Group index="02 / Hazard" title="How often the trigger fires">
-        <Sub title="Data">
+      {/* ---------------------------------------------------------------- */}
+      <Group index="02 / Hazard" title="How often it actually happens">
+        <Sub title="Where the weather comes from">
           <P>
-            Daily maximum and mean temperature from the Open-Meteo Historical Weather API, which
-            serves ECMWF reanalysis at 9 to 25 km. The record runs {HISTORY_START} to {historyEnd()}.
-            It starts in {HISTORY_START} to match the 1991 to 2020 climate normal the Met Office uses
-            for its current thresholds, and ends at the last complete calendar year because the
-            archive lags real time by several days. Temperature is read at one index point, the
-            centre of the chosen area.
+            Daily high and average temperature from the Open-Meteo Historical Weather API, which serves
+            European Centre for Medium-Range Weather Forecasts reanalysis. Reanalysis means a
+            reconstruction of past weather that blends real measurements with a weather model to fill
+            the gaps, giving complete coverage everywhere rather than only where there happened to be a
+            thermometer. It covers squares roughly 9 to 25 km across.
+          </P>
+          <P>
+            The record runs {HISTORY_START} to {historyEnd()}. It starts in {HISTORY_START} because
+            that matches the thirty year baseline the Met Office currently uses, and stops at the last
+            full year because the archive runs a few days behind real time. The temperature is read at
+            a single point, the centre of the area you choose.
           </P>
         </Sub>
 
-        <Sub title="Trend adjustment">
+        <Sub title="Correcting for a warming climate">
           <P>
-            A plain average over {YEARS} years underprices heat and overprices cold, because the early
-            years were cooler than today. Removing a linear trend before pricing is the standard
-            correction for weather contracts, since both warming and urbanisation push historical
-            temperature records upward.
+            Simply averaging {YEARS} years would understate heat risk and overstate cold risk, because
+            the early years in the record were cooler than today. Left uncorrected, an old record makes
+            the future look safer than it is. Stripping out that warming trend before pricing is
+            standard practice for weather contracts.
           </P>
           <F>
-            Take the mean summer maximum (June to August) for heat, or the mean winter temperature
-            (December to February) for cold, for each year.
+            Work out the average summer high, or average winter temperature, for each year.
             <br />
-            Fit a straight line through those yearly means.
+            Draw a straight line of best fit through those yearly averages.
             <br />
-            Shift every day in each year by the gap between that year's point on the line and the
-            final year's.
+            Nudge every day in every year up or down by the gap between that year's point on the line
+            and the final year's.
             <br />
-            Count events again on the shifted record.
+            Count the events again on the corrected record.
           </F>
           <P>
-            Summer and winter are treated separately because they do not warm at the same rate. The
-            panel shows both figures: the record as it happened, and the adjusted version the pricing
-            uses.
+            Summer and winter are corrected separately, because they are not warming at the same rate.
+            The panel shows both numbers: what actually happened, and what the same weather would look
+            like in today's climate. The second is what the price is built on.
           </P>
         </Sub>
 
-        <Sub title="Frequency distribution">
+        <Sub title="Working out the odds of a very bad year">
           <P>
-            {YEARS} years cannot show a 1-in-200 year directly, so a count distribution is fitted to
-            the adjusted events per year and the tail is read from the distribution rather than the
-            record. Where the year to year spread roughly equals the average, a Poisson is used.
-            Where it is noticeably larger, a negative binomial is used instead. That second case is
-            common for heat, because the conditions producing one heatwave tend to produce several in
-            the same summer, and the negative binomial gives that clustering a heavier tail.
+            {YEARS} years of records cannot show you a once-in-two-centuries year, because one probably
+            has not happened yet. So the yearly counts are used to fit a standard statistical curve,
+            and the rare end of that curve is read off instead.
+          </P>
+          <P>
+            Which curve depends on the pattern. If the year to year variation is about what you would
+            expect from random chance, a Poisson distribution is used, which is the textbook model for
+            counting rare events. If the variation is noticeably larger, a negative binomial is used
+            instead. That second case is common for heat, because the weather that produces one
+            heatwave tends to produce several in the same summer, and the negative binomial allows for
+            that clustering by making very bad years more likely than pure chance would suggest.
           </P>
         </Sub>
       </Group>
 
-      {/* ------------------------------------------------------------------ */}
-      <Group index="03 / Price" title="How the rate is built">
-        <Sub title="Premium">
+      {/* ---------------------------------------------------------------- */}
+      <Group index="03 / Price" title="Turning that into a price">
+        <Sub title="The calculation">
           <P>
-            The premium is solved so the combined ratio lands on the target. The combined ratio is
-            claims plus expenses as a share of premium, and anything below 100% is underwriting
-            profit.
+            Insurers describe pricing with two percentages. The loss ratio is the share of each premium
+            expected to go out again as claims. The expense ratio is the share eaten by selling and
+            running the policy. Added together they give the combined ratio, and whatever is left below
+            100% is profit. So a combined ratio of {pc(DEFAULTS.targetCombinedRatio)} means{' '}
+            {pc(1 - DEFAULTS.targetCombinedRatio)} of every premium is profit.
+          </P>
+          <P>
+            Rather than adding up costs and seeing what comes out, this works backwards from a chosen
+            combined ratio, which is how a lot of retail insurance is actually priced.
           </P>
           <F>
-            combined ratio = loss ratio + expense ratio
+            claims share + costs share = target
             <br />
-            {pc(DEFAULTS.targetCombinedRatio)} = {pc(DEFAULTS.targetCombinedRatio - DEFAULTS.expenseRatio)} + {pc(DEFAULTS.expenseRatio)}
+            {pc(DEFAULTS.targetCombinedRatio - DEFAULTS.expenseRatio)} + {pc(DEFAULTS.expenseRatio)} = {pc(DEFAULTS.targetCombinedRatio)}
             <br />
             <br />
-            premium = expected payout ÷ loss ratio
+            yearly price = expected payouts ÷ claims share
             <br />
-            expenses = premium × expense ratio
+            running costs = price × costs share
             <br />
-            margin = premium × (1 − combined ratio)
+            profit = price × whatever is left over
           </F>
           <P>
-            Expected payout is the mean number of paid events a year, from the fitted distribution,
-            multiplied by the payout per event.
+            Expected payouts means the average number of paying events a year, taken from the fitted
+            curve, multiplied by the amount paid per event.
           </P>
         </Sub>
 
-        <Sub title="Reading the loss ratio">
+        <Sub title="Is that a fair price?">
           <P>
-            The FCA publishes claims costs as a proportion of premium for every retail insurance
-            product sold in the UK. In its 2024 data that was 54% for motor and 46% for home, while
-            products it has criticised for poor value sat far lower: 4% for GAP sold as an add-on and
-            around 9% for annual European travel cover. A parametric product is structurally closest
-            to travel and personal accident, which is exactly where those low ratios cluster, so
-            pricing to a loss ratio near motor and home is a deliberate position.
+            The claims share is the number to judge it by, because it tells you how much of a customer's
+            money comes back to customers. The FCA publishes exactly this figure for every retail
+            insurance product sold in the UK. In its 2024 data it was 54% for car insurance and 46% for
+            home. Products the regulator has criticised as poor value sit far lower: 4% for the GAP
+            cover sold alongside cars, and around 9% for annual European travel insurance.
+          </P>
+          <P>
+            That matters here because this product is structurally closest to travel and personal
+            accident cover, which is exactly where the worst ratios cluster. Setting the claims share
+            near car and home insurance is therefore a deliberate choice to be on the right side of
+            that comparison.
           </P>
         </Sub>
 
-        <Sub title="Volume discount">
+        <Sub title="Why costs fall as you sell more">
           <P>
-            Expenses are a flat share of premium by default, which assumes a small book costs the
-            same per policy to run as a large one. Commission and per-policy admin do scale with the
-            book, but platform, compliance and actuarial costs are largely fixed. Rather than guess
-            an insurer's cost structure, the tool lets the underwriter apply their own curve,
-            expressed as points off the expense ratio per doubling, which is the shape real scale
-            effects take.
+            By default running costs are a flat share of the premium, which assumes selling to a
+            thousand people costs as much per person as selling to a million. That is not true.
+            Commission and per-policy admin do rise with the number of customers, but the platform,
+            compliance and actuarial costs are largely fixed and get cheaper per person as you grow.
+          </P>
+          <P>
+            Rather than guess any particular insurer's cost structure, the tool lets you set your own
+            curve, expressed as the saving each time the customer base doubles. That is the shape real
+            economies of scale take, since each doubling buys roughly the same saving rather than each
+            extra customer doing so.
           </P>
           <F>
-            expense ratio = base − discount × log₂(policies ÷ reference book size)
+            costs share = starting share − saving × (number of doublings above the reference size)
           </F>
           <P>
-            The curve works in both directions, so a book smaller than the reference is charged more.
-            The result is floored so expenses never vanish and capped so claims always retain a share.
+            It works both ways, so a customer base smaller than the reference is charged more. The
+            result is capped at both ends, so costs never fall to nothing and claims always keep a
+            share.
           </P>
         </Sub>
 
-        <Sub title="Capital check">
+        <Sub title="Money held in reserve">
           <P>
-            Pricing to a fixed combined ratio gives every location the same margin however lumpy its
-            risk. The capital check shows where that margin is not enough.
+            Pricing to a fixed combined ratio gives every location the same profit margin, however
+            unpredictable its weather is. That is not right on its own, so there is a second check.
+          </P>
+          <P>
+            Insurers must hold spare money aside for a disastrous year, and UK rules set the bar at
+            surviving all but the worst year in two hundred. That reserve is real money sitting idle,
+            so the profit has to be worth the cost of tying it up.
           </P>
           <F>
-            1-in-200 year payout = payout at the 99.5th percentile of the fitted distribution
+            payout in a 1-in-200 year = read off the fitted curve at the 99.5% point
             <br />
-            capital needed = 1-in-200 year payout − expected payout
+            money held in reserve = that payout − payouts in a normal year
             <br />
-            return on capital = margin ÷ capital needed
+            return on reserve = profit ÷ money held in reserve
           </F>
           <P>
-            The 99.5% level is the Solvency II and Solvency UK standard: enough capital to survive
-            all but one year in two hundred. A low return on capital is the signal to raise the price,
-            lower the limit or decline the risk.
+            A low return on reserve means the profit does not justify the money locked up. That is the
+            signal to charge more, cap the payouts lower or decline the risk entirely.
           </P>
         </Sub>
 
-        <Sub title="Writing both perils">
+        <Sub title="Selling heat and cold together">
           <P>
-            Bundling does not change the premium, because expected claims simply add. It changes the
-            tail. A severe summer and a severe winter are treated as independent, so the combined
-            1-in-200 payout is lower than the sum of the two, and the same premium is earned against
-            less capital. Bundling perils is a capital story, not a pricing story.
+            Bundling does not make the price cheaper, because the expected payouts simply add up. What
+            it changes is the worst case. A brutal summer and a brutal winter almost never land in the
+            same year, so the combined 1-in-200 payout is lower than the two added together. The insurer
+            earns the same premium while tying up less money. Bundling is about the reserve, not the
+            price.
           </P>
         </Sub>
       </Group>
 
-      {/* ------------------------------------------------------------------ */}
-      <Group index="04 / Portfolio" title="Scaling to a book">
+      {/* ---------------------------------------------------------------- */}
+      <Group index="04 / Portfolio" title="Selling it across a city">
         <P>
-          Population inside the drawn area comes from WorldPop, {POPULATION_YEAR} estimate, on a 100 m
-          grid. If that service does not respond, a figure can be entered by hand.
+          The population inside the area you draw comes from WorldPop, a {POPULATION_YEAR} estimate
+          mapped onto 100 m squares. If that service does not respond, you can type a figure in
+          instead.
         </P>
         <F>
-          policies in force = population × adoption rate
+          customers = people living here × share who buy it
           <br />
-          premium income = policies × annual premium
+          money taken in = customers × yearly price
           <br />
-          1-in-200 year payout = policies × 1-in-200 year payout per policy
+          payout in a 1-in-200 year = customers × the 1-in-200 payout for one customer
         </F>
         <P>
-          The last line is a straight multiplication, and that is the most important fact about this
-          product. Every policy in the area pays on the same index reading, so they all trigger
-          together. There is no diversification inside an area: a hundred thousand policies are one
-          risk, a hundred thousand times over. Diversification comes only from writing in places
-          whose weather does not move together.
+          That last line being a plain multiplication is the single most important thing about this
+          product. Normally an insurer relies on customers having bad luck at different times, so the
+          good years pay for the bad. Here everyone is covered by the same thermometer, so when it pays
+          out it pays out to everybody at once. A hundred thousand customers are not a hundred thousand
+          separate risks. They are one risk, repeated a hundred thousand times. The only real way to
+          spread it is to sell in places whose weather does not move together.
         </P>
       </Group>
 
-      {/* ------------------------------------------------------------------ */}
-      <Group index="05 / Sensitivity" title="Testing a parameter">
+      {/* ---------------------------------------------------------------- */}
+      <Group index="05 / Sensitivity" title="Testing one setting at a time">
         <P>
-          One parameter is swept across a range while everything else is held fixed, reporting the
-          premium, loss ratio, tail and portfolio effect at each step. Every row is a full
-          recalculation across the whole temperature record rather than an interpolation, so moving a
-          trigger by a degree genuinely re-counts every event in {YEARS} years of daily data.
+          This changes a single setting across a range while holding everything else still, and shows
+          what happens to the price, the claims share, the worst case and the city-wide totals at each
+          step. Every row is recalculated from scratch against the full weather record, so nudging a
+          temperature by a degree genuinely re-counts every event across {YEARS} years of daily data
+          rather than estimating between two points.
         </P>
         <P>
-          Holding everything else constant is both the method and its limitation. Real decisions move
-          several parameters at once and a one-at-a-time sweep cannot show the interactions. Where a
-          row shows a dash, no qualifying event survives at that setting, which marks the point at
-          which the trigger stops being insurable from this record.
-        </P>
-      </Group>
-
-      {/* ------------------------------------------------------------------ */}
-      <Group index="06 / Outlook" title="Repricing on future climate">
-        <P>
-          Daily temperature to {FUTURE.end} from the Open-Meteo Climate API: CMIP6 HighResMIP
-          downscaled to 10 km, {CLIMATE_MODELS.length} models. Climate models run warm or cold against
-          observed weather, so their event counts are not used directly. Each model is compared with
-          itself: its event rate over {FUTURE.start} to {FUTURE.end} against its own rate over{' '}
-          {BASELINE.start} to {BASELINE.end}. That ratio is averaged across models and applied to the
-          adjusted historical frequency, so most of each model's bias cancels and only the change
-          carries through.
-        </P>
-        <P>
-          These runs follow a high emissions pathway, so read the figure as nearer an upper case than
-          a central estimate. It is not needed to price a one-year contract. It tells an insurer
-          whether the product stays viable, which matters before committing to launch. It also runs
-          only on request, because fifty years of daily output across two models is heavy enough to
-          exhaust the provider's per-minute allowance and would otherwise delay the pricing.
+          Changing one thing at a time is what makes the result readable, and also what limits it. Real
+          decisions move several settings together and this cannot show how they interact with each
+          other. Where a row shows a dash, the trigger never fired at that setting, which marks the
+          point where there is no longer anything in the record to base a price on.
         </P>
       </Group>
 
-      {/* ------------------------------------------------------------------ */}
+      {/* ---------------------------------------------------------------- */}
+      <Group index="06 / Outlook" title="What it costs in a warmer world">
+        <P>
+          Daily temperature out to {FUTURE.end} comes from the Open-Meteo Climate API, using{' '}
+          {CLIMATE_MODELS.length} climate models from the CMIP6 research programme, scaled down to
+          10 km squares.
+        </P>
+        <P>
+          Climate models tend to run slightly warm or slightly cool compared with real measurements, so
+          their event counts are not used directly. Instead each model is compared against itself: how
+          often the trigger fires in its own {FUTURE.start} to {FUTURE.end} against how often it fires
+          in its own {BASELINE.start} to {BASELINE.end}. Because both numbers come from the same model,
+          its bias mostly cancels out, and what is left is the change. That change is then applied to
+          the real historical frequency.
+        </P>
+        <P>
+          These particular model runs assume high emissions, so treat the answer as the worse end of the
+          range rather than the most likely one. You do not need it to price a policy for next year. You
+          need it to decide whether the product still makes sense in ten years' time. It also runs only
+          when you ask, because pulling fifty years of daily output from two models is heavy enough to
+          use up the data provider's per-minute allowance and would otherwise hold up everything else.
+        </P>
+      </Group>
+
+      {/* ---------------------------------------------------------------- */}
       <Group index="Limits" title="What this cannot tell you">
         <ul className="text-sm space-y-2.5" style={{ color: 'var(--ink-soft)' }}>
           <li>
-            <strong>Basis risk.</strong> The index is one grid point. A policyholder can suffer on a
-            day the index misses, or be paid on a day they were fine. Every parametric product carries
-            this and it is the main thing a buyer needs to understand.
+            <strong>The payout may not match the loss.</strong> The trigger is one point on a map. Someone
+            can suffer badly on a day it just misses, or get paid on a day they were perfectly fine.
+            Insurers call this basis risk. Every product of this kind has it, and it is the main thing a
+            buyer needs to understand before purchasing.
           </li>
           <li>
-            <strong>No settlement source.</strong> A real contract names a specific station or dataset
-            as binding, with fallbacks. Reanalysis is right for analysis and wrong for a contract.
+            <strong>No agreed source for settling claims.</strong> A real contract has to name one specific
+            weather station or dataset as the binding one, with backups. Reanalysis is right for working
+            out a price and wrong for deciding who gets paid.
           </li>
           <li>
-            <strong>Reanalysis is modelled.</strong> It blends observations with a weather model and
-            runs smoother than a thermometer, so extremes at a single station can be sharper.
+            <strong>The weather data is partly modelled.</strong> It mixes real measurements with a weather
+            model, which smooths things out. A single thermometer can record sharper extremes than this
+            shows.
           </li>
           <li>
-            <strong>One point for the whole area.</strong> A large area has real temperature variation
-            that a single index point ignores.
+            <strong>One reading for the whole area.</strong> A big area has genuine temperature variation
+            inside it that a single point cannot capture.
           </li>
           <li>
-            <strong>Population is from {POPULATION_YEAR}</strong>, the latest WorldPop year, and
-            adoption is an assumption rather than a forecast.
+            <strong>The population figure is from {POPULATION_YEAR}</strong>, the most recent year WorldPop
+            publishes, and the share who buy it is an assumption rather than a forecast.
           </li>
           <li>
-            <strong>Thin history for rare perils.</strong> Where a trigger fired only a handful of
-            times the fitted distribution rests on very little. Cold cover in a mild city is the
-            obvious case.
+            <strong>Rare perils rest on very little data.</strong> Where a trigger only fired a handful of
+            times, the fitted curve is built on almost nothing and the price is correspondingly uncertain.
+            Cold cover in a mild city is the obvious example.
           </li>
           <li>
-            <strong>Not a quotation.</strong> Nobody has underwritten anything here.
+            <strong>This is not a quote.</strong> Nobody has agreed to insure anything here.
           </li>
         </ul>
       </Group>
 
-      {/* ------------------------------------------------------------------ */}
-      <Group index="Provenance" title="Where each assumption comes from">
+      {/* ---------------------------------------------------------------- */}
+      <Group index="Sources" title="How solid is each assumption">
         <P>
-          Not every input carries the same weight of evidence, so each is labelled by what stands
-          behind it.
+          Some of these numbers come from official rules and some are judgement calls, so each is
+          labelled by what actually stands behind it.
         </P>
         <Table
-          head={['Input', 'Evidence', 'Basis']}
+          head={['Setting', 'How solid', 'Based on']}
           rows={[
-            ['Heat trigger', 'Official', 'Met Office heatwave definition, Greater London threshold'],
-            ['Cold trigger', 'Official', 'UK Cold Weather Payment scheme'],
-            ['99.5% capital standard', 'Official', 'Solvency II and Solvency UK'],
-            ['Loss ratio benchmark', 'Official', 'FCA general insurance value measures, 2024'],
-            ['Expense ratio', 'Indicative', 'Within the range typical of UK personal lines. Not published for this product'],
-            ['Volume discount', 'Your input', 'No public data exists on insurer unit costs. Off by default'],
-            ['Payout, limit, adoption', 'Your input', 'Product design choices, not findings'],
+            ['Heat trigger', 'Official', 'The Met Office definition of a heatwave, London threshold'],
+            ['Cold trigger', 'Official', 'The UK Cold Weather Payment scheme'],
+            ['1-in-200 reserve standard', 'Official', 'UK and EU insurance capital rules'],
+            ['Claims share benchmark', 'Official', 'FCA published value measures data, 2024'],
+            ['Running costs share', 'Reasonable guess', 'In the usual range for UK personal insurance. Not published for this product'],
+            ['Volume saving', 'Your call', 'Insurers do not publish their unit costs. Switched off by default'],
+            ['Payout, cap, take-up', 'Your call', 'Design choices, not findings'],
           ]}
         />
       </Group>
 
-      {/* ------------------------------------------------------------------ */}
-      <Group index="Credits" title="Attribution">
+      {/* ---------------------------------------------------------------- */}
+      <Group index="Credits" title="Data and attribution">
         <P>
-          Weather and climate data from Open-Meteo, used under its non-commercial terms. Historical
-          data generated using Copernicus Climate Change Service information via ECMWF. Climate
-          projections from CMIP6 HighResMIP, CC BY 4.0. Population from WorldPop, University of
-          Southampton. Maps and place search from OpenStreetMap contributors, ODbL.
+          Weather and climate data from Open-Meteo, used under its non-commercial terms. Historical data
+          generated using Copernicus Climate Change Service information via ECMWF. Climate projections
+          from CMIP6 HighResMIP, CC BY 4.0. Population from WorldPop, University of Southampton. Maps
+          and place search from OpenStreetMap contributors, ODbL.
         </P>
         <p className="text-xs mt-5 pt-5" style={{ color: 'var(--muted)', borderTop: '1px solid var(--rule)' }}>
           {TOOL_NAME} was designed and built by {CREATOR}. It began as a business school submission on

@@ -7,21 +7,22 @@ const STORAGE_KEY = 'bellweather-tour-seen-v1';
 
 const STEPS = [
   {
-    title: 'What this prices',
+    title: 'What this does',
     body:
-      'Parametric cover that pays a fixed sum when a temperature index crosses a defined line. No claim and no loss adjuster, so there is no damage to model. The only uncertainty is trigger frequency, and thirty five years of ECMWF reanalysis answers that for any location.',
+      'This works out a fair price for insurance that pays out when the weather gets dangerously hot or cold. The policy pays a fixed amount whenever the temperature crosses an agreed line, so nobody has to prove what they lost and nobody comes to inspect. That makes the price simple to work out: the only thing you need to know is how often that temperature gets crossed, and thirty five years of weather records can tell you.',
   },
   {
     title: 'How to use it',
     body:
-      'Choose an area on the map, then work down the panels. Product sets the triggers, limits and pricing basis. Hazard shows observed and trend-adjusted frequency. Price gives the rate build-up, the 1-in-200 payout and return on capital. Portfolio scales it to a book. Every control recalculates instantly from the stored record.',
+      'Pick an area on the map, then work down the panels on the right. Product is where you set the rules: how hot, for how many days, how much it pays. Hazard shows how often that has actually happened. Price turns that into a yearly premium. Portfolio scales it up to a whole city. Sensitivity lets you test how the price moves if you change one setting. Everything updates as you type.',
   },
   {
-    title: 'Before you rely on it',
+    title: 'Worth knowing',
     body:
-      'Triggers default to the Met Office heatwave definition and the Cold Weather Payment rule; capital follows the Solvency UK 99.5% standard. Loadings are yours to set. Basis risk is unsolved and there is no named settlement source, so this is an analysis tool, not a quotation. Method sets out every source and limitation.',
+      'The default settings come from real UK rules: the Met Office definition of a heatwave, and the government scheme that pays people during cold snaps. You can change all of them. What this cannot do is promise that a payout matches what someone actually lost, because it only looks at temperature. It is a tool for thinking through a price, not a real quote. The Method tab explains every number and every shortcut taken.',
   },
 ];
+
 
 
 
