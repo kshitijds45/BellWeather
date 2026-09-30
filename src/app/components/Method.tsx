@@ -350,11 +350,20 @@ export const Method: React.FC = () => (
           the real historical frequency.
         </P>
         <P>
+          The panel shows a price for every year of the window rather than a single figure for the
+          whole period. Individual years within a climate model are not forecasts of those years, so a
+          straight line is fitted through the projected rates and the price is calculated along that
+          line. The raw model years are plotted behind it as scattered points, which shows the spread
+          the smoothing removes and why removing it is necessary.
+        </P>
+        <P>
           These particular model runs assume high emissions, so treat the answer as the worse end of the
-          range rather than the most likely one. You do not need it to price a policy for next year. You
-          need it to decide whether the product still makes sense in ten years' time. It also runs only
-          when you ask, because pulling fifty years of daily output from two models is heavy enough to
-          use up the data provider's per-minute allowance and would otherwise hold up everything else.
+          range rather than the most likely one. An annual policy is repriced each year, so only the
+          near end of this path is contractually relevant. The far end matters for deciding whether to
+          write the line at all, and it is what a multi-year price lock would have to be built on. The
+          panel runs only when you ask, because pulling fifty years of daily output from two models is
+          heavy enough to use up the data provider's per-minute allowance and would otherwise hold up
+          everything else.
         </P>
       </Group>
 

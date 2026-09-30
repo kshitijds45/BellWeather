@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, ArrowRight } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ComposedChart, Line, Scatter, ReferenceLine } from 'recharts';
 import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock } from './Bits';
 import { Assumptions, LocationResult, ProjectionResult, Price, effectiveExpenseRatio, pct } from '../services/RiskModel';
 import { Currency, CURRENCIES, money, moneyShort, count } from '../services/Currency';
@@ -500,9 +500,37 @@ export const OutlookSection: React.FC<{
   const showHeat = peril !== 'cold';
   const showCold = peril !== 'heat';
   const now = result ? pickPrice(result, peril) : null;
-  const future =
-    projection === null ? null : peril === 'heat' ? projection.heatPremium : peril === 'cold' ? projection.coldPremium : projection.combinedPremium;
-  const change = now && now.premium > 0 && future != null ? future / now.premium - 1 : null;
+
+  const pick = (y: { heat: number | null; cold: number | null; both: number | null }) =>
+    peril === 'heat' ? y.heat : peril === 'cold' ? y.cold : y.both;
+  const pickRaw = (y: { heatRaw: number | null; coldRaw: number | null; bothRaw: number | null }) =>
+    peril === 'heat' ? y.heatRaw : peril === 'cold' ? y.coldRaw : y.bothRaw;
+
+  const path = projection?.path ?? [];
+  const yearRow = (year: number) => path.find(p => p.year === year) ?? null;
+
+  const pathAt = (year: number) => {
+    const row = yearRow(year);
+    const v = row ? pick(row) : null;
+    return v != null ? money(v, currency) : '—';
+  };
+
+  const endRow = yearRow(FUTURE.end);
+  const endValue = endRow ? pick(endRow) : null;
+  const endChange = now && now.premium > 0 && endValue != null ? endValue / now.premium - 1 : null;
+
+  const endOf = (which: 'heat' | 'cold') => {
+    const row = endRow;
+    if (!row) return '—';
+    const v = which === 'heat' ? row.heat : row.cold;
+    return v != null ? money(v, currency) : '—';
+  };
+
+  const chartData = path.map(p => ({
+    year: p.year,
+    smoothed: pick(p) ?? undefined,
+    raw: pickRaw(p) ?? undefined,
+  }));
 
   return (
     <>
@@ -540,10 +568,72 @@ export const OutlookSection: React.FC<{
             <Readout
               items={[
                 { label: 'Price today', value: now?.priceable ? money(now.premium, currency) : '—' },
-                { label: `Price in ${FUTURE.start}–${FUTURE.end}`, value: future != null ? money(future, currency) : '—', accent: change != null && change > 0 ? HEAT : undefined },
-                { label: 'Change', value: change != null ? `${change >= 0 ? '+' : ''}${(change * 100).toFixed(0)}%` : '—', accent: change != null && change > 0 ? HEAT : COLD },
+                { label: `Price in ${FUTURE.start}`, value: pathAt(FUTURE.start) },
+                { label: 'Price in 2040', value: pathAt(2040) },
+                { label: `Price in ${FUTURE.end}`, value: pathAt(FUTURE.end), accent: HEAT },
+                {
+                  label: `Change by ${FUTURE.end}`,
+                  value: endChange != null ? `${endChange >= 0 ? '+' : ''}${(endChange * 100).toFixed(0)}%` : '—',
+                  accent: endChange != null && endChange > 0 ? HEAT : COLD,
+                },
               ]}
             />
+
+            <div className="panel">
+              <div className="panel-head">Yearly price across the projection window</div>
+              <div className="p-3.5">
+                <div className="h-56 -ml-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={chartData} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+                      <XAxis dataKey="year" tick={axis} tickLine={false} axisLine={{ stroke: '#3c4550' }} interval={3} />
+                      <YAxis
+                        tick={axis}
+                        tickLine={false}
+                        axisLine={false}
+                        width={46}
+                        tickFormatter={(v: number) => `${currency.symbol}${Math.round(v)}`}
+                      />
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        itemStyle={{ color: '#f7f9fa' }}
+                        labelStyle={{ color: 'rgba(247,249,250,0.7)' }}
+                        formatter={(v: any, name: string) => [money(Number(v), currency), name]}
+                      />
+                      <Legend iconSize={9} wrapperStyle={{ fontSize: 11 }} />
+                      {now?.priceable && (
+                        <ReferenceLine
+                          y={now.premium}
+                          stroke="rgba(247,249,250,0.45)"
+                          strokeDasharray="4 4"
+                          label={{
+                            value: 'today',
+                            position: 'insideTopLeft',
+                            fill: 'rgba(247,249,250,0.6)',
+                            fontSize: 10,
+                          }}
+                        />
+                      )}
+                      <Scatter name="Individual model years" dataKey="raw" fill="rgba(247,249,250,0.3)" />
+                      <Line
+                        name="Trend"
+                        type="monotone"
+                        dataKey="smoothed"
+                        stroke={HEAT}
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <Note>
+                  The line is the trend fitted through the projected rates and is the only part worth
+                  reading. The scattered points are what individual model years produce, plotted to show
+                  why smoothing is necessary: no single year in a climate model is a forecast of that
+                  year. The dashed line is today's price.
+                </Note>
+              </div>
+            </div>
+
             <div className="panel overflow-x-auto">
               <table className="data-table">
                 <thead>
@@ -551,7 +641,7 @@ export const OutlookSection: React.FC<{
                     <th>Peril</th>
                     <th>Change in how often</th>
                     <th>Price today</th>
-                    <th>Price then</th>
+                    <th>Price in {FUTURE.end}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -560,7 +650,7 @@ export const OutlookSection: React.FC<{
                       <td className="c-heat" style={{ color: HEAT, fontWeight: 600 }}>Heat</td>
                       <td className="c-heat">{projection.heatScale != null ? `${projection.heatScale >= 1 ? '+' : ''}${((projection.heatScale - 1) * 100).toFixed(0)}%` : 'n/a'}</td>
                       <td>{result.heat.price.priceable ? money(result.heat.price.premium, currency) : '—'}</td>
-                      <td>{projection.heatPremium != null ? money(projection.heatPremium, currency) : '—'}</td>
+                      <td>{endOf('heat')}</td>
                     </tr>
                   )}
                   {showCold && (
@@ -568,13 +658,20 @@ export const OutlookSection: React.FC<{
                       <td className="c-cold" style={{ color: COLD, fontWeight: 600 }}>Cold</td>
                       <td className="c-cold">{projection.coldScale != null ? `${projection.coldScale >= 1 ? '+' : ''}${((projection.coldScale - 1) * 100).toFixed(0)}%` : 'n/a'}</td>
                       <td>{result.cold.price.priceable ? money(result.cold.price.premium, currency) : '—'}</td>
-                      <td>{projection.coldPremium != null ? money(projection.coldPremium, currency) : '—'}</td>
+                      <td>{endOf('cold')}</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-            <Note>Heat and cold move in opposite directions as the world warms, so selling only heat cover leaves you exposed to a cost that keeps climbing, while selling both balances out. These projections assume high emissions, so treat them as the worse end of the range.</Note>
+
+            <Note>
+              Heat and cold move in opposite directions as the world warms, so selling only heat cover
+              leaves you exposed to a cost that keeps climbing, while selling both balances out. These
+              projections assume high emissions, so treat them as the worse end of the range. Note that
+              an annual policy is repriced each year, so only the near end of this path is contractually
+              relevant. The far end matters for deciding whether to write the line at all.
+            </Note>
           </>
         )}
       </div>

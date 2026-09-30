@@ -9,19 +9,20 @@ const STEPS = [
   {
     title: 'What this does',
     body:
-      'This works out a fair price for insurance that pays out when the weather gets dangerously hot or cold. The policy pays a fixed amount whenever the temperature crosses an agreed line, so nobody has to prove what they lost and nobody comes to inspect. That makes the price simple to work out: the only thing you need to know is how often that temperature gets crossed, and thirty five years of weather records can tell you.',
+      'BellWeather prices insurance that pays a fixed sum when temperature crosses an agreed threshold. Settlement follows a published weather index rather than an assessment of loss, which removes claims handling from the product entirely and reduces pricing to a single question: how often that threshold is crossed. Thirty five years of historical weather data answers it for any location on the map.',
   },
   {
     title: 'How to use it',
     body:
-      'Pick an area on the map, then work down the panels on the right. Product is where you set the rules: how hot, for how many days, how much it pays. Hazard shows how often that has actually happened. Price turns that into a yearly premium. Portfolio scales it up to a whole city. Sensitivity lets you test how the price moves if you change one setting. Everything updates as you type.',
+      'Select an area, then work down the panels. Product sets the trigger, duration and payout. Hazard shows how often those terms would have paid out since 1991. Price builds the rate, the reserve it requires and the return that reserve earns. Portfolio scales the result to a city. Sensitivity tests any single assumption across a range. Outlook projects the rate forward to 2050 under climate models, which informs whether the product remains viable rather than what to charge today. Every figure recalculates as inputs change.',
   },
   {
-    title: 'Worth knowing',
+    title: 'Scope and limits',
     body:
-      'The default settings come from real UK rules: the Met Office definition of a heatwave, and the government scheme that pays people during cold snaps. You can change all of them. What this cannot do is promise that a payout matches what someone actually lost, because it only looks at temperature. It is a tool for thinking through a price, not a real quote. The Method tab explains every number and every shortcut taken.',
+      'Default triggers follow the Met Office heatwave definition and the UK Cold Weather Payment rule. The reserve standard follows Solvency UK. All are editable. The index cannot reflect an individual policyholder\u2019s actual loss, and no settlement source is named here, so this is an analytical tool rather than a quotation. Method sets out every source, formula and limitation behind the figures.',
   },
 ];
+
 
 
 
