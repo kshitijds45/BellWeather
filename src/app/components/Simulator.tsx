@@ -19,7 +19,10 @@ import { Currency, money, moneyShort, count } from '../services/Currency';
 type Param =
   | 'heatThreshold'
   | 'coldThreshold'
-  | 'payoutPerEvent'
+  | 'heatPayout'
+  | 'coldPayout'
+  | 'heatDuration'
+  | 'coldDuration'
   | 'annualLimit'
   | 'targetCombinedRatio'
   | 'expenseRatio'
@@ -41,12 +44,15 @@ interface ParamSpec {
 const SPECS: ParamSpec[] = [
   { key: 'heatThreshold', label: 'Heat trigger', unit: '°C', from: 24, to: 36, step: 1, scale: 1, decimals: 1 },
   { key: 'coldThreshold', label: 'Cold trigger', unit: '°C', from: -6, to: 4, step: 1, scale: 1, decimals: 1 },
-  { key: 'payoutPerEvent', label: 'Payout per event', unit: '', from: 50, to: 500, step: 50, scale: 1, decimals: 0 },
+  { key: 'heatDuration', label: 'Heat days to pay', unit: 'd', from: 1, to: 8, step: 1, scale: 1, decimals: 0 },
+  { key: 'coldDuration', label: 'Cold days to pay', unit: 'd', from: 3, to: 14, step: 1, scale: 1, decimals: 0 },
+  { key: 'heatPayout', label: 'Heat payout', unit: '', from: 50, to: 500, step: 50, scale: 1, decimals: 0 },
+  { key: 'coldPayout', label: 'Cold payout', unit: '', from: 50, to: 500, step: 50, scale: 1, decimals: 0 },
   { key: 'annualLimit', label: 'Payouts a year cap', unit: '', from: 1, to: 8, step: 1, scale: 1, decimals: 0 },
-  { key: 'targetCombinedRatio', label: 'Claims and costs share', unit: '%', from: 70, to: 100, step: 5, scale: 0.01, decimals: 0 },
-  { key: 'expenseRatio', label: 'Running costs share', unit: '%', from: 10, to: 50, step: 5, scale: 0.01, decimals: 0 },
-  { key: 'adoption', label: 'Share who buy it', unit: '%', from: 0.25, to: 5, step: 0.25, scale: 0.01, decimals: 2 },
-  { key: 'volumeDiscountPerDoubling', label: 'Volume saving', unit: 'pp', from: 0, to: 5, step: 0.5, scale: 0.01, decimals: 1 },
+  { key: 'targetCombinedRatio', label: 'Combined ratio target', unit: '%', from: 70, to: 100, step: 5, scale: 0.01, decimals: 0 },
+  { key: 'expenseRatio', label: 'Opex', unit: '%', from: 10, to: 50, step: 5, scale: 0.01, decimals: 0 },
+  { key: 'adoption', label: 'Adoption percentage', unit: '%', from: 0.25, to: 5, step: 0.25, scale: 0.01, decimals: 2 },
+  { key: 'volumeDiscountPerDoubling', label: 'Opex volume saving', unit: 'pp', from: 0, to: 5, step: 0.5, scale: 0.01, decimals: 1 },
 ];
 
 const MAX_ROWS = 30;
@@ -112,7 +118,9 @@ export const SimulatorSection: React.FC<{
       'Paid out in a normal year',
     ];
     const body = rows.map(r => [
-      spec.key === 'payoutPerEvent' ? `${currency.symbol}${r.display}` : fmtParam(r.display),
+      spec.key === 'heatPayout' || spec.key === 'coldPayout'
+        ? `${currency.symbol}${r.display}`
+        : fmtParam(r.display),
       r.price.eventsPerYear.toFixed(3),
       r.price.expectedPayout.toFixed(2),
       r.price.premium.toFixed(2),
@@ -157,8 +165,8 @@ export const SimulatorSection: React.FC<{
           <p className="field-label">Setting to test</p>
           <div className="sweep-grid mb-4">
             {SPECS.filter(s => {
-              if (s.key === 'heatThreshold' && peril === 'cold') return false;
-              if (s.key === 'coldThreshold' && peril === 'heat') return false;
+              if (peril === 'cold' && s.key.startsWith('heat')) return false;
+              if (peril === 'heat' && s.key.startsWith('cold')) return false;
               return true;
             }).map(s => (
               <button
@@ -202,7 +210,7 @@ export const SimulatorSection: React.FC<{
                 {rows.map(r => (
                   <tr key={r.display} data-current={r.current}>
                     <td style={{ fontWeight: r.current ? 600 : 400 }}>
-                      {spec.key === 'payoutPerEvent'
+                      {spec.key === 'heatPayout' || spec.key === 'coldPayout'
                         ? money(r.display, currency, 0)
                         : fmtParam(r.display)}
                       {r.current && (

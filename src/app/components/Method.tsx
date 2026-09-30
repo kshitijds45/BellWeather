@@ -97,15 +97,17 @@ export const Method: React.FC = () => (
           <Table
             head={['Peril', 'Default setting', 'Where it comes from']}
             rows={[
-              ['Heatwave', `${DEFAULTS.heatDuration} days in a row where the day reaches at least ${DEFAULTS.heatThreshold}°C`, 'The Met Office definition of a heatwave. 28°C is the figure used for Greater London'],
+              ['Heatwave', `Every ${DEFAULTS.heatDuration} days in a row where the day reaches at least ${DEFAULTS.heatThreshold}°C`, 'The Met Office definition of a heatwave. 28°C is the figure used for Greater London'],
               ['Cold wave', `Every ${DEFAULTS.coldDuration} days in a row where the day averages ${DEFAULTS.coldThreshold}°C or below`, 'The trigger for the UK Cold Weather Payment, a government scheme that already works this way'],
             ]}
           />
           <P>
-            The two are counted slightly differently, following their own rules. A hot spell counts as
-            one heatwave however long it drags on, and a fresh spell after a break counts as a new one.
-            A cold spell pays again for every complete run, so fourteen cold days pay twice at the
-            seven day setting, exactly as the government scheme does.
+            Both perils pay by duration. Every complete run pays again, so six hot days at a three day
+            trigger pay twice, and fourteen cold days at a seven day trigger pay twice. The Met Office
+            would describe six hot days as a single heatwave, but that is a way of describing weather
+            rather than a rule for paying money. Someone unable to work for six days has lost roughly
+            twice what three days costs them, so paying by duration is the more defensible contract.
+            It also matches how the government's Cold Weather Payment already works.
           </P>
         </Sub>
 
@@ -113,13 +115,13 @@ export const Method: React.FC = () => (
           <Table
             head={['Control', 'What it does']}
             rows={[
-              ['Paid out per event', 'Scales every money figure up or down. It changes the size of the policy, not whether it is good value, because all the percentages stay the same'],
+              ['Paid out each time', 'Set separately for heat and cold, so the two perils can carry different sums. Scales the money figures without changing any of the percentages'],
               ['Most payouts in one year', 'Caps how many times one customer can be paid in a year. This is what limits the insurer\'s worst case'],
-              ['Share of people who buy it', 'Turns the local population into a customer count. Affects the city-wide totals, and the price only if the volume saving is switched on'],
-              ['Claims and costs as share of price', 'The target the price is solved to hit. Anything under 100% means the insurer makes money on the underwriting'],
-              ['Running costs as share of price', 'How much of each premium is eaten by selling and administering the policy'],
-              ['Volume saving', 'How much cheaper the running costs get each time the customer base doubles'],
-              ['Reference book size', 'The customer count at which the running cost figure above is true. The anchor for the volume saving'],
+              ['Adoption percentage', 'Set in the Portfolio panel. Turns the local population into a customer count, which drives the city-wide totals and, if the volume saving is on, the price too'],
+              ['Combined Ratio (Claims + Opex)', 'The target the price is solved to hit. Anything under 100% means the insurer makes money on the underwriting'],
+              ['Opex', 'How much of each premium is eaten by selling and administering the policy'],
+              ['Opex volume saving', 'How much cheaper Opex gets each time the customer base doubles. Cannot go below zero'],
+              ['Reference book size', 'The customer count at which the Opex figure above is true. The anchor for the volume saving'],
             ]}
           />
         </Sub>

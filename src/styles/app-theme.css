@@ -775,3 +775,54 @@ button:focus-visible {
   padding: 9px 8px;
   line-height: 1.3;
 }
+
+/* The two halves of the temperature scale carry their peril's colour. */
+.range-cold::-webkit-slider-thumb { background: var(--cold); }
+.range-cold::-moz-range-thumb { background: var(--cold); }
+.range-heat::-webkit-slider-thumb { background: var(--heat); }
+.range-heat::-moz-range-thumb { background: var(--heat); }
+
+.range-cold { background: linear-gradient(90deg, var(--cold) 0%, rgba(111,180,242,0.25) 100%); }
+.range-heat { background: linear-gradient(90deg, rgba(255,122,85,0.25) 0%, var(--heat) 100%); }
+
+input[type='range']:disabled { opacity: 0.4; cursor: default; }
+
+/* Peril blocks, so heat and cold inputs are never mistaken for each other. */
+.peril-block {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 12px 13px 13px;
+  border-top-width: 2px;
+}
+
+.peril-block[data-peril='heat'] { border-top-color: var(--heat); }
+.peril-block[data-peril='cold'] { border-top-color: var(--cold); }
+
+.peril-head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 11px;
+}
+
+.peril-head::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+/* Sweep options fill every row rather than leaving a gap on the last one. */
+.sweep-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.sweep-grid .pill {
+  flex: 1 1 155px;
+}

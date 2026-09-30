@@ -28,7 +28,8 @@ export interface Assumptions {
   heatDuration: number;        // consecutive days for one heat event
   coldThreshold: number;       // daily mean at or below, degC
   coldDuration: number;        // consecutive days per cold event
-  payoutPerEvent: number;      // fixed payout, pounds
+  heatPayout: number;          // fixed payout per heat payout-block
+  coldPayout: number;          // fixed payout per cold payout-block
   annualLimit: number;         // maximum events paid per peril per year
   adoption: number;            // share of population holding a policy
 }
@@ -48,7 +49,8 @@ export const DEFAULTS: Assumptions = {
   heatDuration: 3,
   coldThreshold: 0,
   coldDuration: 7,
-  payoutPerEvent: 100,
+  heatPayout: 100,
+  coldPayout: 100,
   annualLimit: 3,
   adoption: 0.01,
 };
@@ -119,22 +121,25 @@ export function detrend(
 // ---------------------------------------------------------------------------
 
 /**
- * Counts trigger events per calendar year.
+ * Counts payouts per calendar year.
  *
- * Heat follows the Met Office rule: a qualifying run is one heatwave however
- * long it lasts, and a new run after a break is a new heatwave.
+ * Both perils pay per completed run, following the Cold Weather Payment rule:
+ * every full block of the required length inside a spell pays again, so six
+ * consecutive qualifying days at a three day trigger pay twice.
  *
- * Cold follows the Cold Weather Payment rule: each full block of the required
- * length inside a run pays, so fourteen cold days pay twice.
+ * The Met Office would call that one heatwave, but that is a meteorological
+ * definition rather than a payout rule. Someone unable to work for six days
+ * has lost roughly twice what three days costs, so paying by duration is the
+ * more defensible contract and it keeps both perils consistent.
  *
- * An event is assigned to the year in which it qualifies.
+ * A payout is assigned to the year in which it qualifies.
  */
 export function countEvents(
   dates: string[],
   values: Array<number | null>,
   meets: (v: number) => boolean,
   duration: number,
-  rule: 'perRun' | 'perBlock',
+  rule: 'perBlock',
   startYear: number,
   endYear: number
 ): Map<number, number> {
@@ -152,7 +157,7 @@ export function countEvents(
     run += 1;
     const y = yearOf(d);
     if (!counts.has(y)) return;
-    const qualifies = rule === 'perRun' ? run === duration : run % duration === 0;
+    const qualifies = run % duration === 0;
     if (qualifies) counts.set(y, (counts.get(y) ?? 0) + 1);
   });
 
@@ -213,24 +218,38 @@ export function paidDistribution(f: Frequency, limit: number): number[] {
   return out;
 }
 
-const expectedValue = (dist: number[]) => dist.reduce((a, p, k) => a + p * k, 0);
+/**
+ * A payout distribution expressed in money rather than event counts. Once heat
+ * and cold can pay different amounts per event, counts cannot be added, so
+ * everything downstream works on money outcomes instead.
+ */
+export interface Outcome {
+  money: number;
+  prob: number;
+}
 
-/** Smallest count whose cumulative probability reaches the level. */
-const percentile = (dist: number[], level: number) => {
-  let c = 0;
-  for (let k = 0; k < dist.length; k++) {
-    c += dist[k];
-    if (c >= level - 1e-12) return k;
-  }
-  return dist.length - 1;
+export const outcomesFrom = (dist: number[], payout: number): Outcome[] =>
+  dist.map((prob, k) => ({ money: k * payout, prob }));
+
+/** Joint outcomes of two independent perils, every heat count against every cold count. */
+export const combineOutcomes = (a: Outcome[], b: Outcome[]): Outcome[] => {
+  const out: Outcome[] = [];
+  a.forEach(x => b.forEach(y => out.push({ money: x.money + y.money, prob: x.prob * y.prob })));
+  return out;
 };
 
-/** Distribution of the sum of two independent paid-event distributions. */
-export function convolve(a: number[], b: number[]): number[] {
-  const out = new Array(a.length + b.length - 1).fill(0);
-  a.forEach((pa, i) => b.forEach((pb, j) => (out[i + j] += pa * pb)));
-  return out;
-}
+const expectedMoney = (o: Outcome[]) => o.reduce((sum, x) => sum + x.money * x.prob, 0);
+
+/** Smallest payout whose cumulative probability reaches the level. */
+const percentileMoney = (o: Outcome[], level: number) => {
+  const sorted = [...o].sort((x, y) => x.money - y.money);
+  let c = 0;
+  for (const x of sorted) {
+    c += x.prob;
+    if (c >= level - 1e-12) return x.money;
+  }
+  return sorted.length ? sorted[sorted.length - 1].money : 0;
+};
 
 // ---------------------------------------------------------------------------
 // 4 and 5. Price and capital check
@@ -285,13 +304,13 @@ export function effectiveExpenseRatio(a: Assumptions, policies: number): number 
  * leaves after expenses, and the premium follows directly.
  */
 export function priceFrom(
-  dist: number[],
+  outcomes: Outcome[],
   eventsPerYear: number,
   a: Assumptions,
   policies: number
 ): Price {
-  const expectedPayout = expectedValue(dist) * a.payoutPerEvent;
-  const tailPayout = percentile(dist, TAIL_LEVEL) * a.payoutPerEvent;
+  const expectedPayout = expectedMoney(outcomes);
+  const tailPayout = percentileMoney(outcomes, TAIL_LEVEL);
 
   const expenseRatio = effectiveExpenseRatio(a, policies);
   const lossRatio = a.targetCombinedRatio - expenseRatio;
@@ -326,6 +345,7 @@ export interface PerilResult {
   adjusted: Map<number, number>;
   frequency: Frequency;
   dist: number[];
+  outcomes: Outcome[];
   price: Price;
   slopePerDecade: number;
   observedMean: number;
@@ -346,7 +366,7 @@ function analysePeril(
   const meets =
     peril === 'heat' ? (v: number) => v >= a.heatThreshold : (v: number) => v <= a.coldThreshold;
   const duration = peril === 'heat' ? a.heatDuration : a.coldDuration;
-  const rule = peril === 'heat' ? 'perRun' : 'perBlock';
+  const rule = 'perBlock' as const;
 
   const observed = countEvents(series.dates, values, meets, duration, rule, startYear, endYear);
 
@@ -355,6 +375,8 @@ function analysePeril(
 
   const frequency = fitFrequency(Array.from(adjusted.values()));
   const dist = paidDistribution(frequency, a.annualLimit);
+  const payout = peril === 'heat' ? a.heatPayout : a.coldPayout;
+  const outcomes = outcomesFrom(dist, payout);
 
   const obs = Array.from(observed.values());
   return {
@@ -362,7 +384,8 @@ function analysePeril(
     adjusted,
     frequency,
     dist,
-    price: priceFrom(dist, frequency.mean, a, policies),
+    outcomes,
+    price: priceFrom(outcomes, frequency.mean, a, policies),
     slopePerDecade: trend.slopePerDecade,
     observedMean: obs.reduce((x, y) => x + y, 0) / Math.max(1, obs.length),
   };
@@ -372,7 +395,6 @@ export interface LocationResult {
   heat: PerilResult;
   cold: PerilResult;
   combined: Price;
-  combinedDist: number[];
 }
 
 export function analyse(
@@ -387,15 +409,14 @@ export function analyse(
 
   // Heat and cold fall in different seasons, so they are treated as
   // independent. Combining them in one book diversifies the tail.
-  const combinedDist = convolve(heat.dist, cold.dist);
   const combined = priceFrom(
-    combinedDist,
+    combineOutcomes(heat.outcomes, cold.outcomes),
     heat.frequency.mean + cold.frequency.mean,
     a,
     policies
   );
 
-  return { heat, cold, combined, combinedDist };
+  return { heat, cold, combined };
 }
 
 // ---------------------------------------------------------------------------
@@ -439,7 +460,7 @@ function scaleFor(
     const meets =
       peril === 'heat' ? (v: number) => v >= a.heatThreshold : (v: number) => v <= a.coldThreshold;
     const duration = peril === 'heat' ? a.heatDuration : a.coldDuration;
-    const rule = peril === 'heat' ? 'perRun' : 'perBlock';
+    const rule = 'perBlock' as const;
     const counts = countEvents(series.dates, values, meets, duration, rule, BASELINE.start, FUTURE.end);
     const base = windowRate(counts, BASELINE.start, BASELINE.end);
     const fut = windowRate(counts, FUTURE.start, FUTURE.end);
@@ -449,9 +470,15 @@ function scaleFor(
   return ratios.reduce((x, y) => x + y, 0) / ratios.length;
 }
 
-function scaledPrice(peril: PerilResult, scale: number, a: Assumptions, policies: number): { price: Price; dist: number[] } {
+function scaledPrice(
+  peril: PerilResult,
+  scale: number,
+  a: Assumptions,
+  policies: number,
+  payout: number
+): { price: Price; outcomes: Outcome[] } {
   const f = peril.frequency;
-  if (f.model === 'None') return { price: peril.price, dist: peril.dist };
+  if (f.model === 'None') return { price: peril.price, outcomes: peril.outcomes };
   const dispersion = f.variance / f.mean;
   const mean = f.mean * scale;
   const scaled: Frequency = {
@@ -460,7 +487,8 @@ function scaledPrice(peril: PerilResult, scale: number, a: Assumptions, policies
     model: dispersion > 1.05 ? 'Negative binomial' : 'Poisson',
   };
   const dist = paidDistribution(scaled, a.annualLimit);
-  return { price: priceFrom(dist, mean, a, policies), dist };
+  const outcomes = outcomesFrom(dist, payout);
+  return { price: priceFrom(outcomes, mean, a, policies), outcomes };
 }
 
 export function project(
@@ -472,14 +500,14 @@ export function project(
   const heatScale = scaleFor(models, 'heat', a);
   const coldScale = scaleFor(models, 'cold', a);
 
-  const heat = heatScale !== null ? scaledPrice(base.heat, heatScale, a, policies) : null;
-  const cold = coldScale !== null ? scaledPrice(base.cold, coldScale, a, policies) : null;
+  const heat = heatScale !== null ? scaledPrice(base.heat, heatScale, a, policies, a.heatPayout) : null;
+  const cold = coldScale !== null ? scaledPrice(base.cold, coldScale, a, policies, a.coldPayout) : null;
 
   let combinedPremium: number | null = null;
   if (heat || cold) {
-    const hd = heat ? heat.dist : base.heat.dist;
-    const cd = cold ? cold.dist : base.cold.dist;
-    combinedPremium = priceFrom(convolve(hd, cd), 0, a, policies).premium;
+    const ho = heat ? heat.outcomes : base.heat.outcomes;
+    const co = cold ? cold.outcomes : base.cold.outcomes;
+    combinedPremium = priceFrom(combineOutcomes(ho, co), 0, a, policies).premium;
   }
 
   return {

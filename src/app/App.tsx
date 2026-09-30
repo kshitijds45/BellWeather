@@ -379,6 +379,7 @@ export default function App() {
                 result={result}
                 peril={peril}
                 a={assumptions}
+                onChange={setAssumptions}
                 currency={currency}
                 population={population}
                 policies={policies}

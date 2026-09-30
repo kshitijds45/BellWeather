@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock } from './Bits';
+import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock, TemperatureScale } from './Bits';
 import { Assumptions, LocationResult, ProjectionResult, Price, effectiveExpenseRatio, pct } from '../services/RiskModel';
 import { Currency, CURRENCIES, money, moneyShort, count } from '../services/Currency';
 import { POPULATION_YEAR, BASELINE, FUTURE } from '../services/ClimateData';
@@ -66,61 +66,93 @@ export const ProductSection: React.FC<{
           head="Cover"
           aside={<Pills peril value={peril} onChange={onPerilChange} options={[['heat', 'Heat'], ['cold', 'Cold'], ['both', 'Both']]} />}
         >
-          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
-            {peril !== 'cold' && (
-              <SliderField
-                label="Pays out when the day reaches"
-                value={a.heatThreshold}
-                onChange={v => set({ heatThreshold: v })}
-                min={20}
-                max={45}
-                step={0.5}
-                unit="°C"
-              />
-            )}
-            {peril !== 'cold' && (
-              <SliderField
-                label="For this many days in a row"
-                value={a.heatDuration}
-                onChange={v => set({ heatDuration: Math.round(v) })}
-                min={1}
-                max={10}
-                unit="d"
-              />
-            )}
+          <div className="mb-5">
+            <span className="field-label">Temperature that triggers a payout</span>
+            <TemperatureScale
+              coldValue={a.coldThreshold}
+              hotValue={a.heatThreshold}
+              onColdChange={v => set({ coldThreshold: Math.min(0, v) })}
+              onHotChange={v => set({ heatThreshold: Math.max(0, v) })}
+              showCold={peril !== 'heat'}
+              showHeat={peril !== 'cold'}
+            />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
             {peril !== 'heat' && (
-              <SliderField
-                label="Pays out when the day averages"
-                value={a.coldThreshold}
-                onChange={v => set({ coldThreshold: v })}
-                min={-15}
-                max={10}
-                step={0.5}
-                unit="°C"
-              />
+              <div className="peril-block" data-peril="cold">
+                <p className="peril-head" style={{ color: COLD }}>Cold</p>
+                <div className="grid grid-cols-3 gap-2.5">
+                  <NumberField
+                    label="Day averages at or below"
+                    value={a.coldThreshold}
+                    onChange={v => set({ coldThreshold: Math.min(0, v) })}
+                    step={0.5}
+                    max={0}
+                    suffix="°C"
+                  />
+                  <NumberField
+                    label="Pays again every"
+                    value={a.coldDuration}
+                    onChange={v => set({ coldDuration: Math.max(1, Math.round(v)) })}
+                    min={1}
+                    max={21}
+                    suffix="days"
+                  />
+                  <NumberField
+                    label="Paid out each time"
+                    value={a.coldPayout}
+                    onChange={v => set({ coldPayout: Math.max(1, v) })}
+                    min={1}
+                    step={25}
+                    prefix={currency.symbol}
+                  />
+                </div>
+              </div>
             )}
-            {peril !== 'heat' && (
-              <SliderField
-                label="Pays again every this many days"
-                value={a.coldDuration}
-                onChange={v => set({ coldDuration: Math.round(v) })}
-                min={1}
-                max={21}
-                unit="d"
-              />
+
+            {peril !== 'cold' && (
+              <div className="peril-block" data-peril="heat">
+                <p className="peril-head" style={{ color: HEAT }}>Heat</p>
+                <div className="grid grid-cols-3 gap-2.5">
+                  <NumberField
+                    label="Day reaches at or above"
+                    value={a.heatThreshold}
+                    onChange={v => set({ heatThreshold: Math.max(0, v) })}
+                    step={0.5}
+                    min={0}
+                    suffix="°C"
+                  />
+                  <NumberField
+                    label="Pays again every"
+                    value={a.heatDuration}
+                    onChange={v => set({ heatDuration: Math.max(1, Math.round(v)) })}
+                    min={1}
+                    max={14}
+                    suffix="days"
+                  />
+                  <NumberField
+                    label="Paid out each time"
+                    value={a.heatPayout}
+                    onChange={v => set({ heatPayout: Math.max(1, v) })}
+                    min={1}
+                    step={25}
+                    prefix={currency.symbol}
+                  />
+                </div>
+              </div>
             )}
           </div>
+
+          <Note>
+            A spell longer than the trigger pays again for each further run, so six hot days at a
+            three day trigger pay twice. This matches the UK Cold Weather Payment rule and keeps both
+            perils consistent.
+          </Note>
         </PanelBlock>
 
-        <PanelBlock head="Payout and take-up">
-          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
-            <NumberField label="Paid out per event" value={a.payoutPerEvent} onChange={v => set({ payoutPerEvent: Math.max(1, v) })} prefix={currency.symbol} min={1} step={25} />
-            <label className="block">
-              <span className="field-label">Currency</span>
-              <select value={currency.code} onChange={e => onCurrencyChange(e.target.value)}>
-                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
-              </select>
-            </label>
+        <PanelBlock head="Limits">
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3 items-start">
             <SliderField
               label="Most payouts in one year"
               value={a.annualLimit}
@@ -128,24 +160,21 @@ export const ProductSection: React.FC<{
               min={1}
               max={12}
               unit=""
+              hint="Caps the worst case for one customer"
             />
-            <SliderField
-              label="Share of people who buy it"
-              value={+(a.adoption * 100).toFixed(2)}
-              onChange={v => set({ adoption: v / 100 })}
-              min={0.05}
-              max={10}
-              step={0.05}
-              unit="%"
-              hint={`${count(book, currency)} customers`}
-            />
+            <label className="block">
+              <span className="field-label">Currency</span>
+              <select value={currency.code} onChange={e => onCurrencyChange(e.target.value)}>
+                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
+              </select>
+            </label>
           </div>
         </PanelBlock>
 
         <PanelBlock head="How the price is set">
           <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
             <SliderField
-              label="Claims and costs as share of price"
+              label="Combined Ratio (Claims + Opex)"
               value={Math.round(a.targetCombinedRatio * 100)}
               onChange={v => set({ targetCombinedRatio: v / 100 })}
               min={50}
@@ -153,27 +182,27 @@ export const ProductSection: React.FC<{
               unit="%"
             />
             <SliderField
-              label="Running costs as share of price"
+              label="Opex"
               value={Math.round(a.expenseRatio * 100)}
               onChange={v => set({ expenseRatio: v / 100 })}
               min={5}
               max={60}
               unit="%"
-              hint={invalid ? 'Too high, nothing left for claims' : `Leaves ${pct(a.targetCombinedRatio - a.expenseRatio)} for claims`}
+              hint={invalid ? 'Opex is too high, nothing left for claims' : `Leaves ${pct(a.targetCombinedRatio - a.expenseRatio)} for claims`}
             />
             <div>
               <SliderField
-                label="Cost saving each time the book doubles"
+                label="Opex saving each time customers double"
                 value={+(a.volumeDiscountPerDoubling * 100).toFixed(1)}
-                onChange={v => set({ volumeDiscountPerDoubling: v / 100 })}
+                onChange={v => set({ volumeDiscountPerDoubling: Math.max(0, v) / 100 })}
                 min={0}
                 max={6}
                 step={0.5}
                 unit="pp"
                 hint={
                   a.volumeDiscountPerDoubling > 0
-                    ? `Costs run at ${pct(effectiveExpenseRatio(a, book), 1)} with ${count(book, currency)} customers`
-                    : 'Off. Costs stay the same share however many customers you have.'
+                    ? `Opex now ${pct(effectiveExpenseRatio(a, book), 1)}`
+                    : 'Off. Opex stays the same at any size.'
                 }
               />
               {a.volumeDiscountPerDoubling > 0 && (
@@ -186,8 +215,8 @@ export const ProductSection: React.FC<{
                     min={1}
                   />
                   <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4 }}>
-                    The number of customers at which the running cost above applies. Every doubling
-                    from here takes the saving off, every halving adds it back.
+                    The number of customers at which the Opex above applies. Every doubling from here
+                    takes the saving off, every halving adds it back.
                   </p>
                 </div>
               )}
@@ -520,13 +549,14 @@ export const PortfolioSection: React.FC<{
   result: LocationResult | null;
   peril: Peril;
   a: Assumptions;
+  onChange: (a: Assumptions) => void;
   currency: Currency;
   population: number | null;
   policies: number | null;
   loading: boolean;
   error: string | null;
   onManualPopulation: (n: number) => void;
-}> = ({ result, peril, a, currency, population, policies, loading, error, onManualPopulation }) => {
+}> = ({ result, peril, a, onChange, currency, population, policies, loading, error, onManualPopulation }) => {
   const [manual, setManual] = React.useState('');
   const sel = result ? pickPrice(result, peril) : null;
   const n = policies ?? 0;
@@ -568,10 +598,22 @@ export const PortfolioSection: React.FC<{
 
         {!loading && population !== null && sel && (
           <>
+            <div className="panel panel-pad mb-3" style={{ maxWidth: 420 }}>
+              <SliderField
+                label="Adoption percentage"
+                value={+(a.adoption * 100).toFixed(2)}
+                onChange={v => onChange({ ...a, adoption: Math.max(0, v) / 100 })}
+                min={0.05}
+                max={10}
+                step={0.05}
+                unit="%"
+                hint={`${count(policies ?? 0, currency)} customers out of ${count(population, currency)} people`}
+              />
+            </div>
             <Readout
               items={[
                 { label: `People living here, ${POPULATION_YEAR}`, value: count(population, currency) },
-                { label: 'Customers', value: count(n, currency), note: `${pct(a.adoption, a.adoption < 0.01 ? 2 : 1)} of people buy it` },
+                { label: 'Customers', value: count(n, currency), note: `${pct(a.adoption, a.adoption < 0.01 ? 2 : 1)} adoption` },
                 { label: 'Money taken in', value: sel.priceable ? moneyShort(n * sel.premium, currency) : '—' },
                 { label: 'Paid out in a normal year', value: moneyShort(n * sel.expectedPayout, currency) },
                 { label: 'Paid out in a 1-in-200 year', value: moneyShort(n * sel.tailPayout, currency), accent: HEAT },
