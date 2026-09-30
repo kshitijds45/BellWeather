@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock, TemperatureScale } from './Bits';
+import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock } from './Bits';
 import { Assumptions, LocationResult, ProjectionResult, Price, effectiveExpenseRatio, pct } from '../services/RiskModel';
 import { Currency, CURRENCIES, money, moneyShort, count } from '../services/Currency';
 import { POPULATION_YEAR, BASELINE, FUTURE } from '../services/ClimateData';
@@ -66,22 +66,36 @@ export const ProductSection: React.FC<{
           head="Cover"
           aside={<Pills peril value={peril} onChange={onPerilChange} options={[['heat', 'Heat'], ['cold', 'Cold'], ['both', 'Both']]} />}
         >
-          <div className="mb-5">
-            <span className="field-label">Temperature that triggers a payout</span>
-            <TemperatureScale
-              coldValue={a.coldThreshold}
-              hotValue={a.heatThreshold}
-              onColdChange={v => set({ coldThreshold: Math.min(0, v) })}
-              onHotChange={v => set({ heatThreshold: Math.max(0, v) })}
-              showCold={peril !== 'heat'}
-              showHeat={peril !== 'cold'}
-            />
-          </div>
-
           <div className="grid gap-3 md:grid-cols-2">
             {peril !== 'heat' && (
               <div className="peril-block" data-peril="cold">
                 <p className="peril-head" style={{ color: COLD }}>Cold</p>
+
+                <div className="mb-3.5">
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <span className="field-label" style={{ minHeight: 0, marginBottom: 0 }}>
+                      Trigger temperature
+                    </span>
+                    <span className="text-sm font-semibold" style={{ color: COLD }}>
+                      {a.coldThreshold}°C
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="range-cold"
+                    min={-20}
+                    max={0}
+                    step={0.5}
+                    value={Math.min(0, a.coldThreshold)}
+                    onChange={e => set({ coldThreshold: Math.min(0, parseFloat(e.target.value)) })}
+                    aria-label="Cold trigger temperature"
+                  />
+                  <div className="flex justify-between mt-1" style={{ fontSize: 9.5, color: 'var(--muted)' }}>
+                    <span>−20°C</span>
+                    <span>0°C</span>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-3 gap-2.5">
                   <NumberField
                     label="Day averages at or below"
@@ -114,6 +128,32 @@ export const ProductSection: React.FC<{
             {peril !== 'cold' && (
               <div className="peril-block" data-peril="heat">
                 <p className="peril-head" style={{ color: HEAT }}>Heat</p>
+
+                <div className="mb-3.5">
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <span className="field-label" style={{ minHeight: 0, marginBottom: 0 }}>
+                      Trigger temperature
+                    </span>
+                    <span className="text-sm font-semibold" style={{ color: HEAT }}>
+                      {a.heatThreshold}°C
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="range-heat"
+                    min={0}
+                    max={45}
+                    step={0.5}
+                    value={Math.max(0, a.heatThreshold)}
+                    onChange={e => set({ heatThreshold: Math.max(0, parseFloat(e.target.value)) })}
+                    aria-label="Heat trigger temperature"
+                  />
+                  <div className="flex justify-between mt-1" style={{ fontSize: 9.5, color: 'var(--muted)' }}>
+                    <span>0°C</span>
+                    <span>45°C</span>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-3 gap-2.5">
                   <NumberField
                     label="Day reaches at or above"
@@ -604,7 +644,7 @@ export const PortfolioSection: React.FC<{
                 value={+(a.adoption * 100).toFixed(2)}
                 onChange={v => onChange({ ...a, adoption: Math.max(0, v) / 100 })}
                 min={0.05}
-                max={10}
+                max={100}
                 step={0.05}
                 unit="%"
                 hint={`${count(policies ?? 0, currency)} customers out of ${count(population, currency)} people`}

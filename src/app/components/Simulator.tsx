@@ -57,6 +57,14 @@ const SPECS: ParamSpec[] = [
 
 const MAX_ROWS = 30;
 
+/** Parameters that only make sense for the cover currently selected. */
+const availableFor = (peril: Peril) =>
+  SPECS.filter(s => {
+    if (peril === 'cold' && s.key.startsWith('heat')) return false;
+    if (peril === 'heat' && s.key.startsWith('cold')) return false;
+    return true;
+  });
+
 export const SimulatorSection: React.FC<{
   history: DailySeries | null;
   a: Assumptions;
@@ -66,19 +74,31 @@ export const SimulatorSection: React.FC<{
   startYear: number;
   endYear: number;
 }> = ({ history, a, peril, currency, population, startYear, endYear }) => {
-  const [paramKey, setParamKey] = useState<Param>('heatThreshold');
-  const spec = SPECS.find(s => s.key === paramKey)!;
-  const [from, setFrom] = useState(spec.from);
-  const [to, setTo] = useState(spec.to);
-  const [step, setStep] = useState(spec.step);
+  const options = availableFor(peril);
+  const [paramKey, setParamKey] = useState<Param>(peril === 'cold' ? 'coldThreshold' : 'heatThreshold');
 
-  const choose = (k: Param) => {
-    const s = SPECS.find(x => x.key === k)!;
+  const choose = React.useCallback((k: Param) => {
+    const next = SPECS.find(x => x.key === k)!;
     setParamKey(k);
-    setFrom(s.from);
-    setTo(s.to);
-    setStep(s.step);
-  };
+    setFrom(next.from);
+    setTo(next.to);
+    setStep(next.step);
+  }, []);
+
+  const initial = SPECS.find(s => s.key === paramKey)!;
+  const [from, setFrom] = useState(initial.from);
+  const [to, setTo] = useState(initial.to);
+  const [step, setStep] = useState(initial.step);
+
+  // Switching cover can strip out the parameter being swept, which would
+  // otherwise leave the panel sweeping something that is no longer on offer.
+  React.useEffect(() => {
+    if (!options.some(o => o.key === paramKey)) {
+      choose(peril === 'cold' ? 'coldThreshold' : 'heatThreshold');
+    }
+  }, [peril, options, paramKey, choose]);
+
+  const spec = SPECS.find(s => s.key === paramKey)!;
 
   const rows = useMemo(() => {
     if (!history) return [];
@@ -143,7 +163,7 @@ export const SimulatorSection: React.FC<{
   return (
     <>
       <SectionHead
-        index="06 / Sensitivity"
+        index="05 / Sensitivity"
         title="Test one setting"
         standfirst="Change one setting across a range and watch what happens to the price, while everything else stays fixed. Each row is worked out from scratch against the full weather record, so moving a temperature really does re-count every event."
         aside={
@@ -164,11 +184,7 @@ export const SimulatorSection: React.FC<{
         <div className="panel panel-pad mb-3">
           <p className="field-label">Setting to test</p>
           <div className="sweep-grid mb-4">
-            {SPECS.filter(s => {
-              if (peril === 'cold' && s.key.startsWith('heat')) return false;
-              if (peril === 'heat' && s.key.startsWith('cold')) return false;
-              return true;
-            }).map(s => (
+            {options.map(s => (
               <button
                 key={s.key}
                 className="pill"
