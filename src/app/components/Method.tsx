@@ -165,7 +165,9 @@ export const Method: React.FC = () => (
           <P>
             Summer and winter are corrected separately, because they are not warming at the same rate.
             The panel shows both numbers: what actually happened, and what the same weather would look
-            like in today's climate. The second is what the price is built on.
+            like in today's climate. Every price in this tool, on every panel, is built on the second
+            one. The as-it-happened column is shown for comparison only and is never used to calculate
+            anything.
           </P>
         </Sub>
 

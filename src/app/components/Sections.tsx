@@ -310,7 +310,7 @@ export const RiskSection: React.FC<{
       <SectionHead
         index="02 / Hazard"
         title="How often it has happened"
-        standfirst="How many times your trigger would have fired at this spot, every year since 1991. The adjusted column corrects for the fact that the early years were cooler than today, so old records do not make the risk look smaller than it is."
+        standfirst="How many times your trigger would have fired at this spot, every year since 1991. The adjusted column restates each past year at today's climate, because the early years were cooler and would otherwise make the risk look smaller than it is. Every price in this tool is built on the adjusted figure."
       />
 
       <div className="section-body">
@@ -332,7 +332,7 @@ export const RiskSection: React.FC<{
                   <tr>
                     <th>Peril</th>
                     <th>Times a year, as it happened</th>
-                    <th>Adjusted for warming</th>
+                    <th>Adjusted, used for pricing</th>
                     <th>Warming per decade</th>
                   </tr>
                 </thead>
@@ -410,7 +410,8 @@ export const PriceSection: React.FC<{
   const separateTail = result.heat.price.tailPayout + result.cold.price.tailPayout;
 
   const rows: Array<{ label: string; pick: (p: Price) => string; strong?: boolean }> = [
-    { label: 'Payouts in a normal year', pick: p => money(p.expectedPayout, currency) },
+    { label: 'Payouts a year, adjusted', pick: p => p.eventsPerYear.toFixed(2) },
+    { label: 'Paid out in a normal year', pick: p => money(p.expectedPayout, currency) },
     { label: 'Running costs', pick: p => money(p.expenses, currency) },
     { label: 'Profit', pick: p => money(p.margin, currency) },
     { label: 'Yearly price', pick: p => money(p.premium, currency), strong: true },

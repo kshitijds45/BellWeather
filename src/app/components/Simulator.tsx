@@ -127,7 +127,7 @@ export const SimulatorSection: React.FC<{
   const downloadCsv = () => {
     const head = [
       spec.label,
-      'Times a year',
+      'Payouts a year, adjusted',
       'Payout in a normal year',
       'Yearly price',
       'Claims share',
@@ -212,7 +212,7 @@ export const SimulatorSection: React.FC<{
               <thead>
                 <tr>
                   <th>{spec.label}</th>
-                  <th>Times a year</th>
+                  <th>Payouts a year, adjusted</th>
                   <th>Payout, normal year</th>
                   <th>Yearly price</th>
                   <th>Claims share</th>
