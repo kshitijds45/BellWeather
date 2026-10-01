@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ComposedChart, Line, Scatter, ReferenceLine, Area } from 'recharts';
-import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock, sliderBounds } from './Bits';
+import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock } from './Bits';
 import { Assumptions, LocationResult, ProjectionResult, Price, effectiveExpenseRatio, pct } from '../services/RiskModel';
 import { Currency, CURRENCIES, money, moneyShort, count } from '../services/Currency';
 import { POPULATION_YEAR, BASELINE, FUTURE } from '../services/ClimateData';
@@ -19,6 +19,16 @@ const COLD = '#6fb4f2';
  */
 export const MAX_HEAT_C = 60;
 export const MIN_COLD_C = -90;
+
+/**
+ * Both controls on a trigger temperature share one range, so the slider can
+ * reach every value the box accepts and dragging never silently rewrites a
+ * typed figure.
+ */
+export const clampHeat = (v: number): number =>
+  Number.isFinite(v) ? Math.min(MAX_HEAT_C, Math.max(0, v)) : 0;
+export const clampCold = (v: number): number =>
+  Number.isFinite(v) ? Math.max(MIN_COLD_C, Math.min(0, v)) : 0;
 
 export const perilLabel: Record<Peril, string> = {
   heat: 'Heat only',
@@ -78,10 +88,6 @@ export const ProductSection: React.FC<{
   const set = (patch: Partial<Assumptions>) => onChange({ ...a, ...patch });
   const invalid = a.targetCombinedRatio - a.expenseRatio <= 0;
 
-  // The temperature tracks cover the range a UK product lives in, but a typed
-  // threshold outside it has to stay reachable, so the track follows the value.
-  const heat = sliderBounds(0, 45, a.heatThreshold);
-  const cold = sliderBounds(-20, 0, a.coldThreshold);
   const signed = (v: number) => String(v).replace('-', '−');
 
   return (
@@ -120,16 +126,16 @@ export const ProductSection: React.FC<{
                   <input
                     type="range"
                     className="range-cold"
-                    min={cold.lo}
-                    max={cold.hi}
+                    min={MIN_COLD_C}
+                    max={0}
                     step={0.5}
-                    value={Math.min(0, a.coldThreshold)}
-                    onChange={e => set({ coldThreshold: Math.min(0, parseFloat(e.target.value)) })}
+                    value={clampCold(a.coldThreshold)}
+                    onChange={e => set({ coldThreshold: clampCold(parseFloat(e.target.value)) })}
                     aria-label="Cold trigger temperature"
                   />
                   <div className="flex justify-between mt-1" style={{ fontSize: 9.5, color: 'var(--muted)' }}>
-                    <span>{signed(cold.lo)}°C</span>
-                    <span>{signed(cold.hi)}°C</span>
+                    <span>{signed(MIN_COLD_C)}°C</span>
+                    <span>0°C</span>
                   </div>
                 </div>
 
@@ -137,7 +143,7 @@ export const ProductSection: React.FC<{
                   <NumberField
                     label="Day averages at or below"
                     value={a.coldThreshold}
-                    onChange={v => set({ coldThreshold: Math.max(MIN_COLD_C, Math.min(0, v)) })}
+                    onChange={v => set({ coldThreshold: clampCold(v) })}
                     step={0.5}
                     min={MIN_COLD_C}
                     max={0}
@@ -179,16 +185,16 @@ export const ProductSection: React.FC<{
                   <input
                     type="range"
                     className="range-heat"
-                    min={heat.lo}
-                    max={heat.hi}
+                    min={0}
+                    max={MAX_HEAT_C}
                     step={0.5}
-                    value={Math.max(0, a.heatThreshold)}
-                    onChange={e => set({ heatThreshold: Math.max(0, parseFloat(e.target.value)) })}
+                    value={clampHeat(a.heatThreshold)}
+                    onChange={e => set({ heatThreshold: clampHeat(parseFloat(e.target.value)) })}
                     aria-label="Heat trigger temperature"
                   />
                   <div className="flex justify-between mt-1" style={{ fontSize: 9.5, color: 'var(--muted)' }}>
-                    <span>{signed(heat.lo)}°C</span>
-                    <span>{signed(heat.hi)}°C</span>
+                    <span>0°C</span>
+                    <span>{MAX_HEAT_C}°C</span>
                   </div>
                 </div>
 
@@ -196,7 +202,7 @@ export const ProductSection: React.FC<{
                   <NumberField
                     label="Day reaches at or above"
                     value={a.heatThreshold}
-                    onChange={v => set({ heatThreshold: Math.min(MAX_HEAT_C, Math.max(0, v)) })}
+                    onChange={v => set({ heatThreshold: clampHeat(v) })}
                     step={0.5}
                     min={0}
                     max={MAX_HEAT_C}

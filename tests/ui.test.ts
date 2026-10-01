@@ -4,13 +4,12 @@
  * These cover the things that are easy to get wrong in the interface and
  * impossible to see from the model tests: which years get an axis label,
  * whether the confidence band renders as a range rather than a dash, and
- * whether a slider track still reaches a value typed in from outside it.
+ * whether a slider reaches every value its typed box accepts.
  */
 
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { yearTicks, OutlookTooltip, MAX_HEAT_C, MIN_COLD_C } from '../src/app/components/Sections';
-import { sliderBounds } from '../src/app/components/Bits';
+import { yearTicks, OutlookTooltip, MAX_HEAT_C, MIN_COLD_C, clampHeat, clampCold } from '../src/app/components/Sections';
 import { CURRENCIES } from '../src/app/services/Currency';
 
 let passed = 0;
@@ -159,54 +158,51 @@ check('Tooltip respects the chosen currency', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Slider track bounds
+// Trigger temperature range
+//
+// The slider and the typed box must cover exactly the same set of values. If
+// the box reaches further than the track, dragging silently rewrites a typed
+// figure and the extra range is unreachable by mouse.
 // ---------------------------------------------------------------------------
 
-check('An in-range value leaves the track exactly as declared', () =>
-  eq(sliderBounds(0, 45, 28), { lo: 0, hi: 45 }, 'bounds'));
-
-check('A heat threshold above the track extends the top end', () => {
-  const b = sliderBounds(0, 45, 60);
-  if (b.hi < 60) return `track stops at ${b.hi}, below the value`;
-  return eq(b, { lo: 0, hi: 60 }, 'bounds');
-});
-
-check('A cold threshold below the track extends the bottom end', () => {
-  const b = sliderBounds(-20, 0, -35);
-  if (b.lo > -35) return `track stops at ${b.lo}, above the value`;
-  return eq(b, { lo: -35, hi: 0 }, 'bounds');
-});
-
-check('An extended end rounds outward so it never cuts the value off', () => {
-  const hot = sliderBounds(0, 45, 52.5);
-  if (hot.hi < 52.5) return `top end ${hot.hi} is below 52.5`;
-  if (hot.hi !== 53) return `top end is ${hot.hi}, wanted a whole 53`;
-  const chilly = sliderBounds(-20, 0, -27.5);
-  if (chilly.lo > -27.5) return `bottom end ${chilly.lo} is above -27.5`;
-  if (chilly.lo !== -28) return `bottom end is ${chilly.lo}, wanted a whole -28`;
+check('Heat clamps to the slider track at both ends', () => {
+  if (clampHeat(60) !== 60) return `60 became ${clampHeat(60)}`;
+  if (clampHeat(75) !== MAX_HEAT_C) return `75 became ${clampHeat(75)}`;
+  if (clampHeat(-5) !== 0) return `-5 became ${clampHeat(-5)}`;
+  if (clampHeat(28) !== 28) return 'an ordinary value was altered';
   return null;
 });
 
-check('A fractional declared minimum is not rounded away', () => {
-  // Adoption runs from 0.05%, which Math.floor would flatten to zero.
-  return eq(sliderBounds(0.05, 100, 12), { lo: 0.05, hi: 100 }, 'bounds');
-});
-
-check('A value exactly on either end does not move the track', () => {
-  if (JSON.stringify(sliderBounds(0, 45, 45)) !== JSON.stringify({ lo: 0, hi: 45 })) return 'top end moved';
-  if (JSON.stringify(sliderBounds(0, 45, 0)) !== JSON.stringify({ lo: 0, hi: 45 })) return 'bottom end moved';
+check('Cold clamps to the slider track at both ends', () => {
+  if (clampCold(-90) !== -90) return `-90 became ${clampCold(-90)}`;
+  if (clampCold(-120) !== MIN_COLD_C) return `-120 became ${clampCold(-120)}`;
+  if (clampCold(5) !== 0) return `5 became ${clampCold(5)}`;
+  if (clampCold(-6) !== -6) return 'an ordinary value was altered';
   return null;
 });
 
-check('A non-finite value falls back to the declared track', () =>
-  eq(sliderBounds(0, 45, NaN), { lo: 0, hi: 45 }, 'bounds'));
+check('A non-finite entry falls back to zero rather than NaN', () => {
+  if (!Number.isFinite(clampHeat(NaN))) return 'heat produced a non-finite value';
+  if (!Number.isFinite(clampCold(NaN))) return 'cold produced a non-finite value';
+  return null;
+});
 
-check('The track always contains the value across the permitted range', () => {
-  for (let v = MIN_COLD_C; v <= MAX_HEAT_C; v += 0.5) {
-    const heat = sliderBounds(0, 45, Math.max(0, v));
-    if (Math.max(0, v) < heat.lo || Math.max(0, v) > heat.hi) return `heat track lost ${v}`;
-    const cold = sliderBounds(-20, 0, Math.min(0, v));
-    if (Math.min(0, v) < cold.lo || Math.min(0, v) > cold.hi) return `cold track lost ${v}`;
+check('Clamping is idempotent, so dragging never walks the value', () => {
+  for (let v = -150; v <= 150; v += 0.5) {
+    if (clampHeat(clampHeat(v)) !== clampHeat(v)) return `heat moved again at ${v}`;
+    if (clampCold(clampCold(v)) !== clampCold(v)) return `cold moved again at ${v}`;
+  }
+  return null;
+});
+
+check('Every value the box accepts survives the slider unchanged', () => {
+  // Anything already inside the range must pass through untouched, which is
+  // what makes the track and the box interchangeable.
+  for (let v = 0; v <= MAX_HEAT_C; v += 0.5) {
+    if (clampHeat(v) !== v) return `heat ${v} came back as ${clampHeat(v)}`;
+  }
+  for (let v = MIN_COLD_C; v <= 0; v += 0.5) {
+    if (clampCold(v) !== v) return `cold ${v} came back as ${clampCold(v)}`;
   }
   return null;
 });

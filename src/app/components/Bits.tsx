@@ -65,30 +65,6 @@ export const NumberField: React.FC<{
 );
 
 /**
- * Track bounds for a slider whose value may be typed in from outside its
- * comfortable range.
- *
- * A range input pins its thumb to its own min and max, so a value beyond them
- * leaves the thumb parked at the end looking stuck, and the next drag silently
- * replaces the typed figure with one from inside the range. Growing the track
- * to contain the value keeps the thumb honest and keeps the typed box as the
- * escape hatch it is meant to be. The original bounds are left untouched
- * unless the value actually escapes them, so a fractional minimum such as the
- * 0.05% floor on adoption survives.
- */
-export const sliderBounds = (
-  min: number,
-  max: number,
-  value: number
-): { lo: number; hi: number } => {
-  if (!Number.isFinite(value)) return { lo: min, hi: max };
-  return {
-    lo: value < min ? Math.floor(value) : min,
-    hi: value > max ? Math.ceil(value) : max,
-  };
-};
-
-/**
  * A slider with its value shown as a readout, which is the control an
  * underwriter reaches for when feeling out a threshold rather than
  * committing to one.
@@ -103,16 +79,19 @@ export const SliderField: React.FC<{
   unit?: string;
   hint?: string;
 }> = ({ label, value, onChange, min, max, step = 1, unit, hint }) => {
-  // Sliders are for feeling out a range, typing is for committing to a figure.
-  // Both edit the same value, and the typed box is not clamped to the slider's
-  // range, so a threshold outside the comfortable range is still reachable. The
-  // track grows to meet it rather than clamping the thumb.
+  // Sliders are for feeling out a range, typing is for committing to a figure,
+  // and both reach exactly the same set of values. The ceiling applies as you
+  // type, because a figure above it is already complete. The floor waits for
+  // blur, so a field starting at 50 can still be typed as "8" then "85".
   const commit = (raw: string) => {
     const v = parseFloat(raw);
-    if (Number.isFinite(v)) onChange(v);
+    if (Number.isFinite(v)) onChange(Math.min(max, v));
   };
 
-  const { lo, hi } = sliderBounds(min, max, value);
+  const settle = () => {
+    const fixed = Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : min;
+    if (fixed !== value) onChange(fixed);
+  };
 
   return (
     <div>
@@ -120,10 +99,10 @@ export const SliderField: React.FC<{
       <div className="slider-row">
         <input
           type="range"
-          min={lo}
-          max={hi}
+          min={min}
+          max={max}
           step={step}
-          value={Number.isFinite(value) ? value : min}
+          value={Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : min}
           onChange={e => onChange(parseFloat(e.target.value))}
           aria-label={label}
         />
@@ -131,7 +110,10 @@ export const SliderField: React.FC<{
           type="number"
           value={Number.isFinite(value) ? value : ''}
           step={step}
+          min={min}
+          max={max}
           onChange={e => commit(e.target.value)}
+          onBlur={settle}
           aria-label={`${label}, typed`}
         />
         {unit && <span style={{ fontSize: 11, color: 'var(--muted)', width: 26 }}>{unit}</span>}
