@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, ArrowRight } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ComposedChart, Line, Scatter, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ComposedChart, Line, Scatter, ReferenceLine, Area } from 'recharts';
 import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock } from './Bits';
 import { Assumptions, LocationResult, ProjectionResult, Price, effectiveExpenseRatio, pct } from '../services/RiskModel';
 import { Currency, CURRENCIES, money, moneyShort, count } from '../services/Currency';
@@ -466,16 +466,37 @@ export const PriceSection: React.FC<{
           </table>
         </div>
 
-        {((showHeat && !result.heat.price.priceable) || (showCold && !result.cold.price.priceable)) && (
-          <Note>A dash means this trigger never fired in the whole record. That does not mean it is impossible, only that there is nothing here to base a price on.</Note>
+        {sel.lossRatio <= 0 ? (
+          <Note>
+            Opex is {pct(sel.expenseRatio)} against a combined ratio target of {pct(a.targetCombinedRatio)},
+            so there is nothing left to pay claims with and no premium can be solved. Raise the target or
+            lower Opex. If a volume saving is switched on, a book this small may simply be unviable.
+          </Note>
+        ) : (
+          ((showHeat && !result.heat.price.priceable) || (showCold && !result.cold.price.priceable)) && (
+            <Note>A dash means this trigger never fired in the whole record. That does not mean it is impossible, only that there is nothing here to base a price on.</Note>
+          )
         )}
         {showBoth && result.heat.price.priceable && result.cold.price.priceable && (
           <Note>
             Selling heat and cold together costs the same as selling them apart, because the expected
-            payouts simply add up. What it does change is the worst case. A brutal summer and a brutal
-            winter almost never land in the same year, so the 1-in-200 payout drops from{' '}
-            {money(separateTail, currency, 0)} to {money(result.combined.tailPayout, currency, 0)}. Same
-            price, less money tied up in reserve.
+            payouts simply add up.{' '}
+            {result.combined.tailPayout < separateTail - 1e-9 ? (
+              <>
+                What it does change is the worst case. A brutal summer and a brutal winter almost never
+                land in the same year, so the 1-in-200 payout drops from {money(separateTail, currency, 0)}{' '}
+                to {money(result.combined.tailPayout, currency, 0)}. Same price, less money tied up in
+                reserve.
+              </>
+            ) : (
+              <>
+                At these settings it does not reduce the worst case either: both perils fire often enough
+                that a 1-in-200 year reaches the annual cap on each of them, so the combined worst case
+                is still {money(result.combined.tailPayout, currency, 0)}. The diversification benefit
+                only appears when a payout at the cap on both perils in the same year is genuinely
+                unlikely. Raise the triggers or lower the annual cap to see it.
+              </>
+            )}
           </Note>
         )}
       </div>
@@ -526,11 +547,24 @@ export const OutlookSection: React.FC<{
     return v != null ? money(v, currency) : '—';
   };
 
+  const pickBand = (p: typeof path[number]): [number, number] | undefined => {
+    const lo = peril === 'heat' ? p.heatLower : peril === 'cold' ? p.coldLower : p.bothLower;
+    const hi = peril === 'heat' ? p.heatUpper : peril === 'cold' ? p.coldUpper : p.bothUpper;
+    return lo != null && hi != null ? [lo, hi] : undefined;
+  };
+
   const chartData = path.map(p => ({
     year: p.year,
     smoothed: pick(p) ?? undefined,
     raw: pickRaw(p) ?? undefined,
+    band: pickBand(p),
   }));
+
+  // If the band at the far end spans today's price, the rise is not
+  // distinguishable from noise and the panel says so rather than implying it is.
+  const endBand = endRow ? pickBand(endRow) : undefined;
+  const riseIsClear =
+    endBand && now?.priceable ? endBand[0] > now.premium : null;
 
   return (
     <>
@@ -613,6 +647,15 @@ export const OutlookSection: React.FC<{
                           }}
                         />
                       )}
+                      <Area
+                        name="95% range for the trend"
+                        type="monotone"
+                        dataKey="band"
+                        stroke="none"
+                        fill={HEAT}
+                        fillOpacity={0.14}
+                        activeDot={false}
+                      />
                       <Scatter name="Individual model years" dataKey="raw" fill="rgba(247,249,250,0.3)" />
                       <Line
                         name="Trend"
@@ -627,9 +670,19 @@ export const OutlookSection: React.FC<{
                 </div>
                 <Note>
                   The line is the trend fitted through the projected rates and is the only part worth
-                  reading. The scattered points are what individual model years produce, plotted to show
-                  why smoothing is necessary: no single year in a climate model is a forecast of that
-                  year. The dashed line is today's price.
+                  reading. The shaded band is the 95% range for that line, so a narrow band means the
+                  rise is well determined and a wide one means it is not. The scattered points are what
+                  individual model years produce. They are plotted to show why smoothing is necessary,
+                  since no single year in a climate model is a forecast of that year, and two models
+                  averaged at the same year is arithmetic rather than physics. The dashed line is
+                  today's price.
+                  {riseIsClear === false && (
+                    <>
+                      {' '}
+                      Note that the band still contains today's price at the far end, so on this data
+                      the increase is not clearly distinguishable from noise.
+                    </>
+                  )}
                 </Note>
               </div>
             </div>

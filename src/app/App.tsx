@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Square, HelpCircle, RotateCcw } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
 import { Toaster } from './components/ui/sonner';
 import { AreaMap } from './components/AreaMap';
 import { LocationSearch, SearchBounds } from './components/LocationSearch';
@@ -85,16 +86,6 @@ export default function App() {
   const endYear = historyEnd();
 
   useEffect(() => {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(link);
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!hasSeenTour()) setTourOpen(true);
   }, []);
 
@@ -172,8 +163,8 @@ export default function App() {
   );
 
   const projection = useMemo(
-    () => (result && models ? project(result, models, assumptions, book) : null),
-    [result, models, assumptions, book]
+    () => (result && models ? project(result, models, assumptions, book, endYear) : null),
+    [result, models, assumptions, book, endYear]
   );
 
   // Which panel is in view. Position-based rather than an IntersectionObserver,

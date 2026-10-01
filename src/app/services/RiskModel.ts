@@ -271,9 +271,8 @@ export interface Price {
   priceable: boolean;
 }
 
-// An expense ratio cannot fall to nothing, and enough must be left for claims.
+// An expense ratio cannot fall to nothing however large the book grows.
 const MIN_EXPENSE_RATIO = 0.02;
-const MIN_LOSS_RATIO = 0.02;
 
 /**
  * Expense ratio after any volume discount the underwriter has set.
@@ -291,8 +290,12 @@ export function effectiveExpenseRatio(a: Assumptions, policies: number): number 
   const reference = Math.max(1, a.referencePolicies);
   const doublings = Math.log2(book / reference);
   const raw = a.expenseRatio - a.volumeDiscountPerDoubling * doublings;
-  const ceiling = Math.max(MIN_EXPENSE_RATIO, a.targetCombinedRatio - MIN_LOSS_RATIO);
-  return Math.min(ceiling, Math.max(MIN_EXPENSE_RATIO, raw));
+
+  // Deliberately not capped against the combined ratio. If expenses swallow the
+  // whole target, that combination is unviable and priceFrom reports it as
+  // unpriceable. Capping instead would quietly invent a workable expense ratio
+  // the user never asked for and print a plausible-looking premium from it.
+  return Math.max(MIN_EXPENSE_RATIO, raw);
 }
 
 /**
@@ -439,6 +442,13 @@ export interface ProjectedYear {
   heat: number | null;
   cold: number | null;
   both: number | null;
+  /** 95% band on the fitted line, per cover. */
+  heatLower: number | null;
+  heatUpper: number | null;
+  coldLower: number | null;
+  coldUpper: number | null;
+  bothLower: number | null;
+  bothUpper: number | null;
   /** Priced off each year's raw model count. Scatter, not forecast. */
   heatRaw: number | null;
   coldRaw: number | null;
@@ -485,61 +495,131 @@ function scaleFor(
 }
 
 /**
- * Scale factor for each projected year, averaged across models.
+ * Yearly rates from each model, as counts rather than ratios.
  *
- * Each model's yearly count is divided by that model's own baseline rate, so
- * its bias cancels the same way the window-average ratio does. A single
- * projected year is noise rather than a forecast, so the caller fits a trend
- * through these before pricing anything.
+ * Returned per model so each can be trended against itself. A single year in
+ * a climate model is one realisation of what that year could look like, not a
+ * forecast of it, so these are only ever used through a fitted line.
  */
-function yearlyScales(
+function modelYearlyCounts(
   models: ModelSeries,
   peril: 'heat' | 'cold',
   a: Assumptions
-): Map<number, number> {
-  const perYear = new Map<number, number[]>();
-
-  Object.values(models).forEach(series => {
+): Array<Map<number, number>> {
+  return Object.values(models).map(series => {
     const values = peril === 'heat' ? series.tmax : series.tmean;
     const meets =
       peril === 'heat' ? (v: number) => v >= a.heatThreshold : (v: number) => v <= a.coldThreshold;
     const duration = peril === 'heat' ? a.heatDuration : a.coldDuration;
-    const counts = countEvents(series.dates, values, meets, duration, 'perBlock', BASELINE.start, FUTURE.end);
-    const base = windowRate(counts, BASELINE.start, BASELINE.end);
-    if (base <= 0) return;
-    for (let y = FUTURE.start; y <= FUTURE.end; y++) {
-      const c = counts.get(y);
-      if (c === undefined) continue;
-      const list = perYear.get(y) ?? [];
-      list.push(c / base);
-      perYear.set(y, list);
-    }
+    return countEvents(series.dates, values, meets, duration, 'perBlock', BASELINE.start, FUTURE.end);
   });
-
-  const out = new Map<number, number>();
-  perYear.forEach((list, y) => out.set(y, list.reduce((x, z) => x + z, 0) / list.length));
-  return out;
 }
 
-/** Least squares line through the yearly scale factors, floored at zero. */
-function smoothScales(raw: Map<number, number>): Map<number, number> {
-  const years = Array.from(raw.keys()).sort((x, y) => x - y);
-  if (years.length < 3) return new Map(raw);
+interface Fit {
+  slope: number;
+  intercept: number;
+  /** Standard error of a fitted value, for the confidence band. */
+  seAt: (x: number) => number;
+  at: (x: number) => number;
+}
 
-  const ys = years.map(y => raw.get(y)!);
-  const xbar = years.reduce((x, z) => x + z, 0) / years.length;
-  const ybar = ys.reduce((x, z) => x + z, 0) / ys.length;
-  let num = 0;
-  let den = 0;
-  years.forEach((x, i) => {
-    num += (x - xbar) * (ys[i] - ybar);
-    den += (x - xbar) ** 2;
+/** Least squares fit with the standard error of the fitted line. */
+function fitLine(points: Array<[number, number]>): Fit | null {
+  const n = points.length;
+  if (n < 3) return null;
+  const xbar = points.reduce((s, p) => s + p[0], 0) / n;
+  const ybar = points.reduce((s, p) => s + p[1], 0) / n;
+  let sxy = 0;
+  let sxx = 0;
+  points.forEach(([x, y]) => {
+    sxy += (x - xbar) * (y - ybar);
+    sxx += (x - xbar) ** 2;
   });
-  const slope = den > 0 ? num / den : 0;
+  if (sxx <= 0) return null;
+  const slope = sxy / sxx;
+  const intercept = ybar - slope * xbar;
 
-  const out = new Map<number, number>();
-  years.forEach(y => out.set(y, Math.max(0, ybar + slope * (y - xbar))));
-  return out;
+  // Residual spread, then the usual standard error of a fitted mean.
+  let sse = 0;
+  points.forEach(([x, y]) => {
+    const e = y - (intercept + slope * x);
+    sse += e * e;
+  });
+  const s2 = n > 2 ? sse / (n - 2) : 0;
+
+  return {
+    slope,
+    intercept,
+    at: (x: number) => intercept + slope * x,
+    seAt: (x: number) => Math.sqrt(Math.max(0, s2 * (1 / n + ((x - xbar) ** 2) / sxx))),
+  };
+}
+
+export interface ScalePath {
+  /** Fitted scale relative to the reference year, per projected year. */
+  smooth: Map<number, number>;
+  /** Upper and lower bounds of the fitted line, same basis. */
+  upper: Map<number, number>;
+  lower: Map<number, number>;
+  /** Each year's raw model average, relative to the same reference year. */
+  raw: Map<number, number>;
+}
+
+/**
+ * Scale factors relative to a chosen reference year.
+ *
+ * The observed frequency this multiplies has already been adjusted to the last
+ * year of the historical record, so the model change must be measured from that
+ * same year. Measuring it from a 2000 to 2019 average instead would count the
+ * warming between that window's midpoint and the reference year twice, which
+ * overstated the whole projection.
+ */
+function scalePath(
+  models: ModelSeries,
+  peril: 'heat' | 'cold',
+  a: Assumptions,
+  referenceYear: number
+): ScalePath | null {
+  const perModel = modelYearlyCounts(models, peril, a);
+
+  // Average the models year by year, then trend that.
+  const years: number[] = [];
+  for (let y = BASELINE.start; y <= FUTURE.end; y++) years.push(y);
+
+  const points: Array<[number, number]> = [];
+  const rawCounts = new Map<number, number>();
+  years.forEach(y => {
+    const vals = perModel.map(m => m.get(y)).filter((v): v is number => v !== undefined);
+    if (vals.length === 0) return;
+    const mean = vals.reduce((x, z) => x + z, 0) / vals.length;
+    rawCounts.set(y, mean);
+    points.push([y, mean]);
+  });
+
+  const fit = fitLine(points);
+  if (!fit) return null;
+
+  const atRef = fit.at(referenceYear);
+  if (atRef <= 0) return null;
+
+  const smooth = new Map<number, number>();
+  const upper = new Map<number, number>();
+  const lower = new Map<number, number>();
+  const raw = new Map<number, number>();
+
+  // 95% band, two standard errors either side of the fitted line.
+  const Z = 1.96;
+  for (let y = FUTURE.start; y <= FUTURE.end; y++) {
+    const centre = fit.at(y);
+    const se = fit.seAt(y);
+    smooth.set(y, Math.max(0, centre / atRef));
+    upper.set(y, Math.max(0, (centre + Z * se) / atRef));
+    lower.set(y, Math.max(0, (centre - Z * se) / atRef));
+    const r = rawCounts.get(y);
+    if (r !== undefined) raw.set(y, Math.max(0, r / atRef));
+  }
+
+  return { smooth, upper, lower, raw };
 }
 
 /** Premium for one peril at a given scale factor on its observed frequency. */
@@ -593,71 +673,87 @@ export function project(
   base: LocationResult,
   models: ModelSeries,
   a: Assumptions,
-  policies: number
+  policies: number,
+  referenceYear: number
 ): ProjectionResult {
-  const heatScale = scaleFor(models, 'heat', a);
-  const coldScale = scaleFor(models, 'cold', a);
+  const heatPath = scalePath(models, 'heat', a, referenceYear);
+  const coldPath = scalePath(models, 'cold', a, referenceYear);
 
-  const heat = heatScale !== null ? scaledPrice(base.heat, heatScale, a, policies, a.heatPayout) : null;
-  const cold = coldScale !== null ? scaledPrice(base.cold, coldScale, a, policies, a.coldPayout) : null;
+  const priceAt = (peril: PerilResult, scale: number | undefined, payout: number) =>
+    scale === undefined ? null : premiumAtScale(peril, scale, a, policies, payout);
 
-  let combinedPremium: number | null = null;
-  if (heat || cold) {
-    const ho = heat ? heat.outcomes : base.heat.outcomes;
-    const co = cold ? cold.outcomes : base.cold.outcomes;
-    combinedPremium = priceFrom(combineOutcomes(ho, co), 0, a, policies).premium;
-  }
+  const join = (
+    x: { premium: number | null; outcomes: Outcome[] } | null,
+    z: { premium: number | null; outcomes: Outcome[] } | null
+  ): number | null => {
+    if (!x && !z) return null;
+    const priced = priceFrom(
+      combineOutcomes(x ? x.outcomes : [{ money: 0, prob: 1 }], z ? z.outcomes : [{ money: 0, prob: 1 }]),
+      0,
+      a,
+      policies
+    );
+    return priced.priceable ? priced.premium : null;
+  };
 
-  // Year by year path. Raw scatter for evidence, fitted trend for the signal.
-  const rawHeat = yearlyScales(models, 'heat', a);
-  const rawCold = yearlyScales(models, 'cold', a);
-  const smoothHeat = smoothScales(rawHeat);
-  const smoothCold = smoothScales(rawCold);
+  const forPeril = (
+    h: { premium: number | null; outcomes: Outcome[] } | null,
+    c: { premium: number | null; outcomes: Outcome[] } | null
+  ) => ({ heat: h?.premium ?? null, cold: c?.premium ?? null, both: join(h, c) });
 
   const path: ProjectedYear[] = [];
   for (let y = FUTURE.start; y <= FUTURE.end; y++) {
-    const at = (scales: Map<number, number>, p: PerilResult, payout: number) => {
-      const sc = scales.get(y);
-      if (sc === undefined) return null;
-      return premiumAtScale(p, sc, a, policies, payout);
-    };
-
-    const h = at(smoothHeat, base.heat, a.heatPayout);
-    const c = at(smoothCold, base.cold, a.coldPayout);
-    const hr = at(rawHeat, base.heat, a.heatPayout);
-    const cr = at(rawCold, base.cold, a.coldPayout);
-
-    const join = (
-      x: { premium: number | null; outcomes: Outcome[] } | null,
-      z: { premium: number | null; outcomes: Outcome[] } | null
-    ): number | null => {
-      if (!x && !z) return null;
-      const priced = priceFrom(
-        combineOutcomes(x ? x.outcomes : [{ money: 0, prob: 1 }], z ? z.outcomes : [{ money: 0, prob: 1 }]),
-        0,
-        a,
-        policies
-      );
-      return priced.priceable ? priced.premium : null;
-    };
+    const mid = forPeril(
+      priceAt(base.heat, heatPath?.smooth.get(y), a.heatPayout),
+      priceAt(base.cold, coldPath?.smooth.get(y), a.coldPayout)
+    );
+    const low = forPeril(
+      priceAt(base.heat, heatPath?.lower.get(y), a.heatPayout),
+      priceAt(base.cold, coldPath?.lower.get(y), a.coldPayout)
+    );
+    const high = forPeril(
+      priceAt(base.heat, heatPath?.upper.get(y), a.heatPayout),
+      priceAt(base.cold, coldPath?.upper.get(y), a.coldPayout)
+    );
+    const raw = forPeril(
+      priceAt(base.heat, heatPath?.raw.get(y), a.heatPayout),
+      priceAt(base.cold, coldPath?.raw.get(y), a.coldPayout)
+    );
 
     path.push({
       year: y,
-      heat: h?.premium ?? null,
-      cold: c?.premium ?? null,
-      both: join(h, c),
-      heatRaw: hr?.premium ?? null,
-      coldRaw: cr?.premium ?? null,
-      bothRaw: join(hr, cr),
+      heat: mid.heat,
+      cold: mid.cold,
+      both: mid.both,
+      heatLower: low.heat,
+      heatUpper: high.heat,
+      coldLower: low.cold,
+      coldUpper: high.cold,
+      bothLower: low.both,
+      bothUpper: high.both,
+      heatRaw: raw.heat,
+      coldRaw: raw.cold,
+      bothRaw: raw.both,
     });
   }
 
+  // Scale factors over the whole window, kept for the summary table.
+  const windowScale = (p: ScalePath | null) => {
+    if (!p) return null;
+    const vals = Array.from(p.smooth.values());
+    return vals.length ? vals.reduce((x, z) => x + z, 0) / vals.length : null;
+  };
+
+  const endYear = FUTURE.end;
+  const endHeat = priceAt(base.heat, heatPath?.smooth.get(endYear), a.heatPayout);
+  const endCold = priceAt(base.cold, coldPath?.smooth.get(endYear), a.coldPayout);
+
   return {
-    heatScale,
-    coldScale,
-    heatPremium: heat ? heat.price.premium : null,
-    coldPremium: cold ? cold.price.premium : null,
-    combinedPremium,
+    heatScale: windowScale(heatPath),
+    coldScale: windowScale(coldPath),
+    heatPremium: endHeat?.premium ?? null,
+    coldPremium: endCold?.premium ?? null,
+    combinedPremium: join(endHeat, endCold),
     path,
   };
 }

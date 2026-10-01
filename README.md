@@ -86,6 +86,14 @@ The loss ratio benchmark comes from FCA published data. The expense ratio is con
 published for this product, and the volume discount, payout, limit and adoption are product design
 choices rather than findings.
 
+## Validation
+
+89 automated checks in `tests/`, covering the counting rules, trend adjustment,
+distribution fitting, pricing identities, the projection path and the data layer
+(with a stubbed network). Includes a 400-case fuzz over random assumption sets
+asserting that the combined ratio always lands exactly on target and that no
+output is ever non-finite or negative where it should not be. See `tests/README.md`.
+
 ## Running and deploying
 
 Pushing to `main` builds and publishes the site automatically through

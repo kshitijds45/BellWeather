@@ -343,18 +343,34 @@ export const Method: React.FC = () => (
         </P>
         <P>
           Climate models tend to run slightly warm or slightly cool compared with real measurements, so
-          their event counts are not used directly. Instead each model is compared against itself: how
-          often the trigger fires in its own {FUTURE.start} to {FUTURE.end} against how often it fires
-          in its own {BASELINE.start} to {BASELINE.end}. Because both numbers come from the same model,
-          its bias mostly cancels out, and what is left is the change. That change is then applied to
-          the real historical frequency.
+          their event counts are not used directly. Instead each model is compared against itself, which
+          cancels most of its bias and leaves only the change, and that change is applied to the real
+          historical frequency.
+        </P>
+        <P>
+          The year it is measured from matters. The historical frequency has already been restated at
+          the climate of the last year in the record, so the model change has to be measured from that
+          same year. A straight line is fitted through each model's yearly counts across its whole span,
+          read off at that reference year, and every projected year is expressed as a ratio to it.
+          Measuring instead from an average of {BASELINE.start} to {BASELINE.end} would count the
+          warming between that window's midpoint and the reference year twice, which overstated the
+          whole projection.
         </P>
         <P>
           The panel shows a price for every year of the window rather than a single figure for the
           whole period. Individual years within a climate model are not forecasts of those years, so a
           straight line is fitted through the projected rates and the price is calculated along that
           line. The raw model years are plotted behind it as scattered points, which shows the spread
-          the smoothing removes and why removing it is necessary.
+          the smoothing removes and why removing it is necessary. Averaging two models at the same
+          calendar year is arithmetic rather than physics, since one model's 2037 has no relationship
+          to another's, which is a further reason to read only the line.
+        </P>
+        <P>
+          The shaded band is the 95% range for the fitted line, from the standard error of the fit.
+          A narrow band means the rise is well determined by the model output. A band still containing
+          today's price at the far end means it is not, and the panel says so explicitly when that
+          happens. The band can appear to narrow at the far end even as the underlying uncertainty
+          grows, because the annual limit compresses large frequencies into the same capped payout.
         </P>
         <P>
           These particular model runs assume high emissions, so treat the answer as the worse end of the
