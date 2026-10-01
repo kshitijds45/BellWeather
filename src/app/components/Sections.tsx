@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ComposedChart, Line, Scatter, ReferenceLine, Area } from 'recharts';
-import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock } from './Bits';
+import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock, InlineNumber, Word, Term } from './Bits';
 import { Assumptions, LocationResult, ProjectionResult, Price, effectiveExpenseRatio, pct } from '../services/RiskModel';
 import { Currency, CURRENCIES, money, moneyShort, count } from '../services/Currency';
 import { POPULATION_YEAR, BASELINE, FUTURE } from '../services/ClimateData';
@@ -139,32 +139,42 @@ export const ProductSection: React.FC<{
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2.5">
-                  <NumberField
-                    label="Day averages at or below"
-                    value={a.coldThreshold}
-                    onChange={v => set({ coldThreshold: clampCold(v) })}
-                    step={0.5}
-                    min={MIN_COLD_C}
-                    max={0}
-                    suffix="°C"
-                  />
-                  <NumberField
-                    label="Pays again every"
-                    value={a.coldDuration}
-                    onChange={v => set({ coldDuration: Math.max(1, Math.round(v)) })}
-                    min={1}
-                    max={21}
-                    suffix="days"
-                  />
-                  <NumberField
-                    label="Paid out each time"
-                    value={a.coldPayout}
-                    onChange={v => set({ coldPayout: Math.max(1, v) })}
-                    min={1}
-                    step={25}
-                    prefix={currency.symbol}
-                  />
+                <div className="terms-line">
+                  <Term>
+                    <Word>Pay {currency.symbol}</Word>
+                    <InlineNumber
+                      name="Cold payout each time"
+                      value={a.coldPayout}
+                      onChange={v => set({ coldPayout: Math.max(1, v) })}
+                      min={1}
+                      step={25}
+                      width={72}
+                    />
+                  </Term>
+                  <Term>
+                    <Word>for every</Word>
+                    <InlineNumber
+                      name="Cold block length in days"
+                      value={a.coldDuration}
+                      onChange={v => set({ coldDuration: Math.max(1, Math.min(21, Math.round(v))) })}
+                      min={1}
+                      max={21}
+                      width={48}
+                    />
+                  </Term>
+                  <Word>consecutive days averaging</Word>
+                  <Term>
+                    <InlineNumber
+                      name="Cold trigger temperature, typed"
+                      value={a.coldThreshold}
+                      onChange={v => set({ coldThreshold: clampCold(v) })}
+                      step={0.5}
+                      min={MIN_COLD_C}
+                      max={0}
+                      width={64}
+                    />
+                    <Word>°C or below</Word>
+                  </Term>
                 </div>
               </div>
             )}
@@ -198,41 +208,51 @@ export const ProductSection: React.FC<{
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2.5">
-                  <NumberField
-                    label="Day reaches at or above"
-                    value={a.heatThreshold}
-                    onChange={v => set({ heatThreshold: clampHeat(v) })}
-                    step={0.5}
-                    min={0}
-                    max={MAX_HEAT_C}
-                    suffix="°C"
-                  />
-                  <NumberField
-                    label="Pays again every"
-                    value={a.heatDuration}
-                    onChange={v => set({ heatDuration: Math.max(1, Math.round(v)) })}
-                    min={1}
-                    max={14}
-                    suffix="days"
-                  />
-                  <NumberField
-                    label="Paid out each time"
-                    value={a.heatPayout}
-                    onChange={v => set({ heatPayout: Math.max(1, v) })}
-                    min={1}
-                    step={25}
-                    prefix={currency.symbol}
-                  />
+                <div className="terms-line">
+                  <Term>
+                    <Word>Pay {currency.symbol}</Word>
+                    <InlineNumber
+                      name="Heat payout each time"
+                      value={a.heatPayout}
+                      onChange={v => set({ heatPayout: Math.max(1, v) })}
+                      min={1}
+                      step={25}
+                      width={72}
+                    />
+                  </Term>
+                  <Term>
+                    <Word>for every</Word>
+                    <InlineNumber
+                      name="Heat block length in days"
+                      value={a.heatDuration}
+                      onChange={v => set({ heatDuration: Math.max(1, Math.min(14, Math.round(v))) })}
+                      min={1}
+                      max={14}
+                      width={48}
+                    />
+                  </Term>
+                  <Word>consecutive days reaching</Word>
+                  <Term>
+                    <InlineNumber
+                      name="Heat trigger temperature, typed"
+                      value={a.heatThreshold}
+                      onChange={v => set({ heatThreshold: clampHeat(v) })}
+                      step={0.5}
+                      min={0}
+                      max={MAX_HEAT_C}
+                      width={64}
+                    />
+                    <Word>°C or above</Word>
+                  </Term>
                 </div>
               </div>
             )}
           </div>
 
           <Note>
-            A spell longer than the trigger pays again for each further run, so six hot days at a
-            three day trigger pay twice. This matches the UK Cold Weather Payment rule and keeps both
-            perils consistent.
+            Only whole blocks pay. Five hot days at a three day trigger pay once, and the two spare
+            days do not carry over to a later spell. This follows the UK Cold Weather Payment rule,
+            which pays again for each further seven day period.
           </Note>
         </PanelBlock>
 
@@ -480,7 +500,7 @@ export const PriceSection: React.FC<{
       <SectionHead
         index="03 / Price"
         title="What to charge"
-        standfirst={`The yearly price per customer. It is set so that ${pct(a.targetCombinedRatio)} of the premium goes on claims and running costs, leaving the rest as profit. Capital is the spare money an insurer must hold back for a very bad year.`}
+        standfirst={`The yearly price per customer. It is set so that ${pct(a.targetCombinedRatio)} of the premium goes on claims and running costs, leaving the rest as profit. The reserve is the spare money an insurer must hold back for a very bad year.`}
       />
 
       <div className="section-body space-y-3">
@@ -699,7 +719,7 @@ export const OutlookSection: React.FC<{
 
       <div className="section-body space-y-3">
         {!hasRun && !loading && !error && (
-          <Empty>This pulls fifty years of daily forecasts from two climate models, which is by far the slowest thing on the page. It only runs when you ask, so it can never hold up the pricing above.</Empty>
+          <Empty>This pulls fifty years of daily forecasts from two climate models, which is by far the slowest thing on the page. It only runs when you ask.</Empty>
         )}
         {loading && (
           <div className="panel panel-pad flex items-center gap-2 text-xs" style={{ color: 'var(--muted)' }}>

@@ -103,7 +103,9 @@ export const Method: React.FC = () => (
           />
           <P>
             Both perils pay by duration. Every complete run pays again, so six hot days at a three day
-            trigger pay twice, and fourteen cold days at a seven day trigger pay twice. The Met Office
+            trigger pay twice, and fourteen cold days at a seven day trigger pay twice. Only complete
+            runs count: five hot days pay once and the two spare days are discarded rather than carried
+            into a later spell, because any day that fails the trigger resets the count. The Met Office
             would describe six hot days as a single heatwave, but that is a way of describing weather
             rather than a rule for paying money. Someone unable to work for six days has lost roughly
             twice what three days costs them, so paying by duration is the more defensible contract.
@@ -115,7 +117,7 @@ export const Method: React.FC = () => (
           <Table
             head={['Control', 'What it does']}
             rows={[
-              ['Paid out each time', 'Set separately for heat and cold, so the two perils can carry different sums. Scales the money figures without changing any of the percentages'],
+              ['Amount paid each time', 'The sum in the policy sentence. Set separately for heat and cold, so the two perils can carry different sums. Scales the money figures without changing any of the percentages'],
               ['Most payouts in one year', 'Caps how many times one customer can be paid in a year. This is what limits the insurer\'s worst case'],
               ['Adoption percentage', 'Set in the Portfolio panel. Turns the local population into a customer count, which drives the city-wide totals and, if the volume saving is on, the price too'],
               ['Combined Ratio (Claims + Opex)', 'The target the price is solved to hit. Anything under 100% means the insurer makes money on the underwriting'],

@@ -65,6 +65,54 @@ export const NumberField: React.FC<{
 );
 
 /**
+ * A number box that sits inside a line of prose rather than under a label.
+ *
+ * The terms of the policy read better as one sentence than as three separately
+ * labelled boxes, because the sentence can state the rule the boxes only imply.
+ * The accessible name carries the wording a label would have given.
+ */
+export const InlineNumber: React.FC<{
+  name: string;
+  value: number;
+  onChange: (v: number) => void;
+  width: number;
+  step?: number;
+  min?: number;
+  max?: number;
+}> = ({ name, value, onChange, width, step = 1, min, max }) => (
+  <input
+    type="number"
+    className="inline-number"
+    style={{ width }}
+    value={Number.isFinite(value) ? value : ''}
+    step={step}
+    min={min}
+    max={max}
+    onChange={e => {
+      const v = parseFloat(e.target.value);
+      if (Number.isFinite(v)) onChange(v);
+    }}
+    aria-label={name}
+  />
+);
+
+/** The surrounding words in a terms sentence. */
+export const Word: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span className="terms-word">{children}</span>
+);
+
+/**
+ * One clause of a terms sentence, kept on a single line.
+ *
+ * The sentence wraps at the width of a peril column, and a figure separated
+ * from the words that introduce it reads as a stray number, so each figure
+ * travels with its own clause.
+ */
+export const Term: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span className="terms-group">{children}</span>
+);
+
+/**
  * A slider with its value shown as a readout, which is the control an
  * underwriter reaches for when feeling out a threshold rather than
  * committing to one.

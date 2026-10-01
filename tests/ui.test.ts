@@ -9,7 +9,16 @@
 
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { yearTicks, OutlookTooltip, MAX_HEAT_C, MIN_COLD_C, clampHeat, clampCold } from '../src/app/components/Sections';
+import {
+  yearTicks,
+  OutlookTooltip,
+  ProductSection,
+  MAX_HEAT_C,
+  MIN_COLD_C,
+  clampHeat,
+  clampCold,
+} from '../src/app/components/Sections';
+import { DEFAULTS } from '../src/app/services/RiskModel';
 import { CURRENCIES } from '../src/app/services/Currency';
 
 let passed = 0;
@@ -204,6 +213,93 @@ check('Every value the box accepts survives the slider unchanged', () => {
   for (let v = MIN_COLD_C; v <= 0; v += 0.5) {
     if (clampCold(v) !== v) return `cold ${v} came back as ${clampCold(v)}`;
   }
+  return null;
+});
+
+// ---------------------------------------------------------------------------
+// Policy terms sentence
+// ---------------------------------------------------------------------------
+
+const product = (peril: 'heat' | 'cold' | 'both') =>
+  renderToStaticMarkup(
+    React.createElement(ProductSection, {
+      a: DEFAULTS,
+      onChange: () => {},
+      onReset: () => {},
+      isDefault: true,
+      peril,
+      onPerilChange: () => {},
+      currency: GBP,
+      onCurrencyChange: () => {},
+      book: 10000,
+    })
+  );
+
+const plain = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+
+const inOrder = (text: string, parts: string[]) => {
+  let at = 0;
+  for (const p of parts) {
+    const i = text.indexOf(p, at);
+    if (i === -1) return `"${p}" missing or out of order`;
+    at = i + p.length;
+  }
+  return null;
+};
+
+check('Heat terms read as one sentence, amount first', () =>
+  inOrder(plain(product('heat')), ['Pay £', 'for every', 'consecutive days reaching', '°C or above']));
+
+check('Cold terms read as one sentence, amount first', () =>
+  inOrder(plain(product('cold')), ['Pay £', 'for every', 'consecutive days averaging', '°C or below']));
+
+check('Each peril states its own measure', () => {
+  const heat = plain(product('heat'));
+  const cold = plain(product('cold'));
+  // "reaching" is the daily maximum, "averaging" the daily mean. Swapping them
+  // would describe a different index from the one the model counts.
+  if (heat.includes('averaging')) return 'heat sentence claims an average';
+  if (cold.includes('reaching')) return 'cold sentence claims a peak';
+  return null;
+});
+
+check('Every figure in the sentence keeps an accessible name', () => {
+  const html = product('both');
+  for (const name of [
+    'Heat payout each time',
+    'Heat block length in days',
+    'Heat trigger temperature, typed',
+    'Cold payout each time',
+    'Cold block length in days',
+    'Cold trigger temperature, typed',
+  ]) {
+    if (!html.includes(`aria-label="${name}"`)) return `no box named "${name}"`;
+  }
+  return null;
+});
+
+check('The sentence carries the chosen currency symbol', () => {
+  const inr = CURRENCIES.find(c => c.code === 'INR')!;
+  const html = renderToStaticMarkup(
+    React.createElement(ProductSection, {
+      a: DEFAULTS,
+      onChange: () => {},
+      onReset: () => {},
+      isDefault: true,
+      peril: 'heat',
+      onPerilChange: () => {},
+      currency: inr,
+      onCurrencyChange: () => {},
+      book: 10000,
+    })
+  );
+  return plain(html).includes('Pay ₹') ? null : 'currency symbol not carried into the sentence';
+});
+
+check('The note explains what the sentence cannot, that part blocks are lost', () => {
+  const text = plain(product('both'));
+  if (!text.includes('Only whole blocks pay')) return 'note missing';
+  if (!text.includes('do not carry over')) return 'note does not mention the lost remainder';
   return null;
 });
 

@@ -826,3 +826,63 @@ input[type='range']:disabled { opacity: 0.4; cursor: default; }
 .sweep-grid .pill {
   flex: 1 1 155px;
 }
+
+/* ---------------------------------------------------------------------------
+   Policy terms written as a sentence.
+
+   The three figures that define a payout read as one line of prose rather than
+   as three labelled boxes, so the per block rule is stated rather than implied.
+   The row wraps at the width of a peril column and the baselines stay aligned
+   across the wrap.
+   --------------------------------------------------------------------------- */
+.terms-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 5px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.terms-word {
+  white-space: nowrap;
+}
+
+.terms-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+input[type='number'].inline-number {
+  width: auto;
+  text-align: center;
+  padding: 3px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+/* The figure belongs to its peril, so it carries the peril's colour. */
+.peril-block[data-peril='heat'] input.inline-number {
+  color: var(--heat);
+  border-color: rgba(255, 122, 85, 0.45);
+}
+
+.peril-block[data-peril='cold'] input.inline-number {
+  color: var(--cold);
+  border-color: rgba(111, 180, 242, 0.45);
+}
+
+.peril-block[data-peril='heat'] input.inline-number:hover,
+.peril-block[data-peril='heat'] input.inline-number:focus {
+  border-color: var(--heat);
+}
+
+.peril-block[data-peril='cold'] input.inline-number:hover,
+.peril-block[data-peril='cold'] input.inline-number:focus {
+  border-color: var(--cold);
+}

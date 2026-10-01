@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
-import { SectionHead, NumberField, Note, Empty, PanelBlock } from './Bits';
+import { SectionHead, NumberField, Empty, PanelBlock } from './Bits';
 import { Peril, pickPrice } from './Sections';
 import { Assumptions, analyse, pct } from '../services/RiskModel';
 import { DailySeries } from '../services/ClimateData';
@@ -245,11 +245,6 @@ export const SimulatorSection: React.FC<{
                 ))}
               </tbody>
             </table>
-            <Note>
-              Changing one thing at a time is what makes this readable, and also what limits it. Real
-              decisions move several settings at once, and this cannot show how they interact. A dash
-              marks the point where the trigger stops firing at all in the record.
-            </Note>
           </div>
         )}
       </div>
