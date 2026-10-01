@@ -5,7 +5,16 @@ import { Logo } from './Logo';
 
 const STORAGE_KEY = 'bellweather-tour-seen-v1';
 
-const STEPS = [
+interface Step {
+  title: string;
+  /** A step is either one block of prose, or a lead line, a labelled list and a closing line. */
+  body?: string;
+  lead?: string;
+  items?: Array<[string, string]>;
+  tail?: string;
+}
+
+const STEPS: Step[] = [
   {
     title: 'What this does',
     body:
@@ -13,8 +22,19 @@ const STEPS = [
   },
   {
     title: 'How to use it',
-    body:
-      'Select an area, then work down the panels. Product sets the trigger, duration and payout. Hazard shows how often those terms would have paid out since 1991. Price builds the rate, the reserve it requires and the return that reserve earns. Portfolio scales the result to a city. Sensitivity tests any single assumption across a range. Outlook projects the rate forward to 2050 under climate models, which informs whether the product remains viable rather than what to charge today. Every figure recalculates as inputs change.',
+    lead: 'Select an area on the map, then work down the panels.',
+    items: [
+      ['01 Product', 'Set the terms. How hot or cold it has to get, for how long and how much it pays.'],
+      ['02 Hazard', 'How often those terms would have paid out at that spot, every year since 1991.'],
+      ['03 Price', 'The premium to charge, the reserve it ties up and the return that reserve earns.'],
+      ['04 Portfolio', 'The same policy sold across a whole city, at the take-up rate you choose.'],
+      ['05 Sensitivity', 'One assumption moved across a range, so you can see what the price is most exposed to.'],
+      [
+        '06 Outlook',
+        'The same policy priced to 2050 under climate models. It answers whether the product still works in a warmer world, not what to charge next year.',
+      ],
+    ],
+    tail: 'Every figure recalculates as you change an input.',
   },
   {
     title: 'Scope and limits',
@@ -48,6 +68,7 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
   if (!open) return null;
   const first = step === 0;
   const last = step === STEPS.length - 1;
+  const current = STEPS[step];
 
   return (
     <div
@@ -57,7 +78,16 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
       aria-modal="true"
       aria-label={`${TOOL_NAME} walkthrough`}
     >
-      <div className="panel w-full max-w-lg relative" style={{ boxShadow: '0 30px 80px rgba(0,0,0,0.6)' }}>
+      <div
+        className="panel w-full max-w-lg relative"
+        style={{
+          boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
+          // The six-panel list makes step two the tallest, so the dialog scrolls
+          // rather than clipping on a short window.
+          maxHeight: 'calc(100vh - 2rem)',
+          overflowY: 'auto',
+        }}
+      >
         <button
           onClick={onClose}
           className="absolute top-3 right-3 p-1.5 rounded-md"
@@ -76,8 +106,31 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
               <p className="text-xs mt-2.5" style={{ color: 'var(--muted)' }}>{TOOL_TAGLINE}</p>
             </div>
           )}
-          <h2 className="mb-2.5" style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em' }}>{STEPS[step].title}</h2>
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{STEPS[step].body}</p>
+          <h2 className="mb-2.5" style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em' }}>{current.title}</h2>
+          {current.body && (
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{current.body}</p>
+          )}
+          {current.lead && (
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{current.lead}</p>
+          )}
+          {current.items && (
+            <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0' }}>
+              {current.items.map(([name, text]) => (
+                <li
+                  key={name}
+                  className="text-sm leading-relaxed"
+                  style={{ color: 'var(--ink-soft)', marginTop: 4 }}
+                >
+                  <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{name}</span> {text}
+                </li>
+              ))}
+            </ul>
+          )}
+          {current.tail && (
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)', marginTop: 10 }}>
+              {current.tail}
+            </p>
+          )}
 
           <div className="flex items-center justify-between mt-6 pt-4" style={{ borderTop: '1px solid var(--rule)' }}>
             <div className="flex items-center gap-1.5">
