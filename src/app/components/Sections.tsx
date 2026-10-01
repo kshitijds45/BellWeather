@@ -29,6 +29,28 @@ const tooltipStyle = {
   color: '#f7f9fa',
 };
 
+/**
+ * Year ticks every `step` years that always include the last year.
+ *
+ * Recharts' own `interval` counts positions from the left and drops whatever
+ * is left over at the right-hand end, which on both of these charts is the
+ * single year a reader is most likely to be looking for: the last year of the
+ * record on the hazard chart, and 2050 on the outlook chart. This places the
+ * ticks explicitly instead, and drops the penultimate one if keeping the end
+ * year would print two labels on top of each other.
+ */
+export const yearTicks = (start: number, end: number, step: number): number[] => {
+  if (!isFinite(start) || !isFinite(end) || end < start) return [];
+  const out: number[] = [];
+  for (let y = start; y <= end; y += step) out.push(y);
+  const last = out[out.length - 1];
+  if (last !== end) {
+    if (end - last < Math.ceil(step / 2)) out.pop();
+    out.push(end);
+  }
+  return out;
+};
+
 // ---------------------------------------------------------------------------
 // 01 Product
 // ---------------------------------------------------------------------------
@@ -305,6 +327,12 @@ export const RiskSection: React.FC<{
     { y: 0, v: -1 }
   );
 
+  // Ticks are read off the data itself so they always match a bar, even if the
+  // record comes back short of the requested window.
+  const ticks = data.length
+    ? yearTicks(data[0].year, data[data.length - 1].year, 5)
+    : yearTicks(startYear, endYear, 5);
+
   return (
     <>
       <SectionHead
@@ -367,7 +395,7 @@ export const RiskSection: React.FC<{
               <div className="h-44 -ml-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                    <XAxis dataKey="year" tick={axis} tickLine={false} axisLine={{ stroke: '#333940' }} interval={3} />
+                    <XAxis dataKey="year" tick={axis} tickLine={false} axisLine={{ stroke: '#333940' }} ticks={ticks} interval={0} />
                     <YAxis allowDecimals={false} tick={axis} tickLine={false} axisLine={false} width={22} />
                     <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#eef1f2' }} labelStyle={{ color: 'rgba(247,249,250,0.7)' }} cursor={{ fill: 'rgba(247,249,250,0.06)' }} />
                     <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
@@ -508,6 +536,67 @@ export const PriceSection: React.FC<{
 // 04 Outlook
 // ---------------------------------------------------------------------------
 
+interface OutlookRow {
+  year: number;
+  smoothed?: number;
+  raw?: number;
+  band?: [number, number];
+}
+
+/**
+ * The band series carries a [low, high] pair rather than a single number, so
+ * the default tooltip formatter coerces it to NaN and prints a dash. This
+ * reads the row directly and renders the band as the range it is.
+ */
+export const OutlookTooltip: React.FC<{
+  active?: boolean;
+  label?: number | string;
+  payload?: Array<{ payload?: OutlookRow }>;
+  currency?: Currency;
+}> = ({ active, label, payload, currency }) => {
+  if (!active || !currency) return null;
+  const row = payload?.[0]?.payload;
+  if (!row) return null;
+
+  const lines: Array<{ key: string; value: string; colour: string }> = [];
+  if (row.smoothed != null) {
+    lines.push({ key: 'Trend', value: money(row.smoothed, currency), colour: HEAT });
+  }
+  if (row.band) {
+    lines.push({
+      key: '95% range',
+      value: `${money(row.band[0], currency)} – ${money(row.band[1], currency)}`,
+      colour: 'rgba(247,249,250,0.85)',
+    });
+  }
+  if (row.raw != null) {
+    lines.push({ key: 'Model average', value: money(row.raw, currency), colour: 'rgba(247,249,250,0.6)' });
+  }
+  if (!lines.length) return null;
+
+  return (
+    <div
+      style={{
+        ...tooltipStyle,
+        border: '1px solid #566170',
+        padding: '7px 9px',
+        minWidth: 160,
+      }}
+    >
+      <div style={{ color: 'rgba(247,249,250,0.7)', marginBottom: 4 }}>{label}</div>
+      {lines.map(l => (
+        <div
+          key={l.key}
+          style={{ display: 'flex', justifyContent: 'space-between', gap: 14, lineHeight: 1.55 }}
+        >
+          <span style={{ color: l.colour }}>{l.key}</span>
+          <span style={{ color: '#f7f9fa', fontVariantNumeric: 'tabular-nums' }}>{l.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const OutlookSection: React.FC<{
   result: LocationResult | null;
   projection: ProjectionResult | null;
@@ -553,12 +642,16 @@ export const OutlookSection: React.FC<{
     return lo != null && hi != null ? [lo, hi] : undefined;
   };
 
-  const chartData = path.map(p => ({
+  const chartData: OutlookRow[] = path.map(p => ({
     year: p.year,
     smoothed: pick(p) ?? undefined,
     raw: pickRaw(p) ?? undefined,
     band: pickBand(p),
   }));
+
+  const ticks = chartData.length
+    ? yearTicks(chartData[0].year, chartData[chartData.length - 1].year, 5)
+    : yearTicks(FUTURE.start, FUTURE.end, 5);
 
   // If the band at the far end spans today's price, the rise is not
   // distinguishable from noise and the panel says so rather than implying it is.
@@ -619,7 +712,7 @@ export const OutlookSection: React.FC<{
                 <div className="h-56 -ml-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={chartData} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
-                      <XAxis dataKey="year" tick={axis} tickLine={false} axisLine={{ stroke: '#3c4550' }} interval={3} />
+                      <XAxis dataKey="year" tick={axis} tickLine={false} axisLine={{ stroke: '#3c4550' }} ticks={ticks} interval={0} />
                       <YAxis
                         tick={axis}
                         tickLine={false}
@@ -628,10 +721,8 @@ export const OutlookSection: React.FC<{
                         tickFormatter={(v: number) => `${currency.symbol}${Math.round(v)}`}
                       />
                       <Tooltip
-                        contentStyle={tooltipStyle}
-                        itemStyle={{ color: '#f7f9fa' }}
-                        labelStyle={{ color: 'rgba(247,249,250,0.7)' }}
-                        formatter={(v: any, name: string) => [money(Number(v), currency), name]}
+                        cursor={{ stroke: 'rgba(247,249,250,0.28)' }}
+                        content={<OutlookTooltip currency={currency} />}
                       />
                       <Legend iconSize={9} wrapperStyle={{ fontSize: 11 }} />
                       {now?.priceable && (
@@ -656,7 +747,7 @@ export const OutlookSection: React.FC<{
                         fillOpacity={0.14}
                         activeDot={false}
                       />
-                      <Scatter name="Individual model years" dataKey="raw" fill="rgba(247,249,250,0.3)" />
+                      <Scatter name="Model average, year by year" dataKey="raw" fill="rgba(247,249,250,0.3)" />
                       <Line
                         name="Trend"
                         type="monotone"
@@ -671,10 +762,10 @@ export const OutlookSection: React.FC<{
                 <Note>
                   The line is the trend fitted through the projected rates and is the only part worth
                   reading. The shaded band is the 95% range for that line, so a narrow band means the
-                  rise is well determined and a wide one means it is not. The scattered points are what
-                  individual model years produce. They are plotted to show why smoothing is necessary,
-                  since no single year in a climate model is a forecast of that year, and two models
-                  averaged at the same year is arithmetic rather than physics. The dashed line is
+                  rise is well determined and a wide one means it is not. The scattered points are each
+                  year's model average before smoothing. They are plotted to show why smoothing is
+                  necessary, since no single year in a climate model is a forecast of that year, and two
+                  models averaged at the same year is arithmetic rather than physics. The dashed line is
                   today's price.
                   {riseIsClear === false && (
                     <>

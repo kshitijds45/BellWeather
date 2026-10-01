@@ -88,9 +88,10 @@ choices rather than findings.
 
 ## Validation
 
-89 automated checks in `tests/`, covering the counting rules, trend adjustment,
-distribution fitting, pricing identities, the projection path and the data layer
-(with a stubbed network). Includes a 400-case fuzz over random assumption sets
+103 automated checks in `tests/`, covering the counting rules, trend adjustment,
+distribution fitting, pricing identities, the projection path, the data layer
+(with a stubbed network) and the chart axes and tooltips. Includes a 400-case
+fuzz over random assumption sets
 asserting that the combined ratio always lands exactly on target and that no
 output is ever non-finite or negative where it should not be. See `tests/README.md`.
 
