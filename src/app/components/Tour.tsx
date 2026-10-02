@@ -86,7 +86,6 @@ const Mock: React.FC = () => (
               <span className="guide-book">
                 <span>·· customers</span>
                 <span>£·· premium</span>
-                <span>£·· reserve</span>
               </span>
             </div>
           </div>
@@ -189,9 +188,6 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
             <p className="guide-tagline">
               Heatwave and cold wave insurance, priced from open climate data.
             </p>
-            <div className="guide-by">
-              By <strong>{CREATOR}</strong>
-            </div>
             <p className="guide-hint">A two minute guide · Use the arrows to continue</p>
           </>,
           'guide-cover'
@@ -222,9 +218,9 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
                 <div className="guide-label">Why this tool</div>
                 <h3>It answers that question for any place, in minutes.</h3>
                 <p>
-                  Pricing this kind of cover usually sits with specialist teams and paid data.
-                  BellWeather does it from free public data, in the browser, with every step open to
-                  inspection.
+                  Pricing this cover is specialist work, and a live contract settles on a licensed
+                  weather index. BellWeather does the analysis from free public data, in the browser,
+                  with every step open to inspection.
                 </p>
               </article>
             </div>
@@ -242,7 +238,7 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
                 ['01', 'Built on evidence', 'Daily temperatures since 1991, adjusted for the warming trend so every past year counts as today’s climate.', 'var(--g-cold)'],
                 ['02', 'Priced like an insurer', 'A premium set to a target profit margin, with the 1-in-200 year payout insurers must hold reserves against.', 'var(--g-ink)'],
                 ['03', 'From one policy to a city', 'Population data turns a single price into a full book: premiums taken in, payouts and reserves needed.', 'var(--g-ink)'],
-                ['04', 'Tested against 2050', 'Climate model projections show whether the product still works, and what it costs, in a warmer world.', 'var(--g-heat)'],
+                ['04', 'Projected to 2050', 'Climate model projections show whether the product still works, and what it costs, in a warmer world.', 'var(--g-heat)'],
               ].map(([num, title, body, accent]) => (
                 <article key={num} className="guide-card" style={{ ['--g-accent' as string]: accent }}>
                   <div className="guide-num">{num}</div>
@@ -254,7 +250,7 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
             <div className="guide-footnote">
               <span>Every assumption editable</span>
               <span>Every figure recalculates instantly</span>
-              <span>Every source public</span>
+              <span>Every source and formula under Method</span>
               <span>No sign up</span>
             </div>
           </>
@@ -265,7 +261,7 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
           'How to navigate it',
           <>
             <p className="guide-eyebrow">How to navigate it</p>
-            <h2>Three moves. The rest is optional depth.</h2>
+            <h2>Three moves to a price.</h2>
             <div className="guide-nav-layout">
               <Mock />
               <div>
@@ -302,10 +298,6 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
                     </div>
                   </li>
                 </ol>
-                <p className="guide-tip">
-                  <strong>Short on time?</strong> Read 02 Price and 06 Outlook. Method, top right,
-                  sets out every source and formula.
-                </p>
               </div>
             </div>
           </>

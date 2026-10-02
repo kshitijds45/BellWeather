@@ -454,6 +454,21 @@ check('The drawing of the console matches the console', () => {
   return null;
 });
 
+check('The guide calls model output a projection, not a forecast or a test', () => {
+  // 2031 to 2050 is scenario-conditional model output. Calling it a forecast,
+  // or claiming the product was tested, overstates what the panel can show.
+  if (/tested against/i.test(guideText)) return 'still claims the product was tested';
+  if (/forecast/i.test(guideText)) return 'calls a multi-decadal projection a forecast';
+  if (!guideText.includes('Projected to 2050')) return 'projection wording missing';
+  return null;
+});
+
+check('The guide does not overstate how this work is normally done', () => {
+  if (guideText.includes('paid data')) return 'still claims the work needs paid data';
+  if (!guideText.includes('licensed weather index')) return 'settlement caveat missing';
+  return null;
+});
+
 check('The guide credits its author and says how to reopen it', () => {
   if (!guideText.includes('Kshitij Divansh Saxena')) return 'author missing';
   if (!guideText.toLowerCase().includes('top right')) return 'does not say where to find it again';
