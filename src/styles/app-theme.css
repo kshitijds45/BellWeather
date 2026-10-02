@@ -1085,3 +1085,12 @@ button.jump:hover {
   pointer-events: none;
   backdrop-filter: blur(3px);
 }
+
+/* Where a trigger temperature came from. The number means nothing without it:
+   28°C is a London figure, not a universal definition of hot. */
+.trigger-note {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-top: 7px;
+}

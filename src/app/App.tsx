@@ -30,7 +30,7 @@ import {
   HISTORY_START,
   historyEnd,
 } from './services/ClimateData';
-import { Assumptions, DEFAULTS, analyse, project } from './services/RiskModel';
+import { Assumptions, DEFAULTS, analyse, project, derivedHeatThreshold } from './services/RiskModel';
 import { findCurrency } from './services/Currency';
 
 const LONDON: { name: string; area: Bounds } = {
@@ -65,11 +65,18 @@ export default function App() {
   const [draw, setDraw] = useState<{ start: () => void; drawing: boolean } | null>(null);
 
   const [assumptions, setAssumptions] = useState<Assumptions>(DEFAULTS);
+  // Whether the heat trigger is the one this location's climate implies, or a
+  // figure the user has set. Only the former follows the map.
+  const [ownHeatTrigger, setOwnHeatTrigger] = useState(false);
   const [peril, setPeril] = useState<Peril>('both');
   const [currencyCode, setCurrencyCode] = useState('GBP');
   const currency = findCurrency(currencyCode);
 
   const [history, setHistory] = useState<DailySeries | null>(null);
+  const localHeatTrigger = useMemo(
+    () => (history ? derivedHeatThreshold(history.dates, history.tmax) : null),
+    [history]
+  );
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
@@ -160,6 +167,34 @@ export default function App() {
   const policies =
     population !== null ? Math.max(1, Math.round(population * assumptions.adoption)) : null;
   const book = policies ?? assumptions.referencePolicies;
+
+  /**
+   * The trigger follows the map until the user takes it over.
+   *
+   * A heat trigger is only meaningful relative to local climate, so the default
+   * is re-read wherever the area moves. Once someone has set their own figure it
+   * stays put, because having a typed threshold jump on a pan would be worse
+   * than having a stale one.
+   */
+  useEffect(() => {
+    if (ownHeatTrigger || localHeatTrigger === null) return;
+    setAssumptions(a => (a.heatThreshold === localHeatTrigger ? a : { ...a, heatThreshold: localHeatTrigger }));
+  }, [localHeatTrigger, ownHeatTrigger]);
+
+  const applyAssumptions = useCallback(
+    (next: Assumptions) => {
+      setAssumptions(prev => {
+        if (next.heatThreshold !== prev.heatThreshold) setOwnHeatTrigger(true);
+        return next;
+      });
+    },
+    []
+  );
+
+  const resetAssumptions = useCallback(() => {
+    setOwnHeatTrigger(false);
+    setAssumptions({ ...DEFAULTS, heatThreshold: localHeatTrigger ?? DEFAULTS.heatThreshold });
+  }, [localHeatTrigger]);
 
   const result = useMemo(
     () => (history ? analyse(history, assumptions, startYear, endYear, book) : null),
@@ -387,13 +422,20 @@ export default function App() {
             <section id="product" className="doc-section">
               <ProductSection
                 a={assumptions}
-                onChange={setAssumptions}
-                onReset={() => setAssumptions(DEFAULTS)}
+                onChange={applyAssumptions}
+                onReset={resetAssumptions}
                 isDefault={sameAssumptions(assumptions, DEFAULTS)}
                 peril={peril}
                 onPerilChange={setPeril}
                 currency={currency}
                 onCurrencyChange={setCurrencyCode}
+                localHeatTrigger={localHeatTrigger}
+                ownHeatTrigger={ownHeatTrigger}
+                onUseLocalHeatTrigger={() => {
+                  if (localHeatTrigger === null) return;
+                  setOwnHeatTrigger(false);
+                  setAssumptions(a => ({ ...a, heatThreshold: localHeatTrigger }));
+                }}
               />
             </section>
 

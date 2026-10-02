@@ -2,7 +2,7 @@ import React from 'react';
 import { Loader2, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ComposedChart, Line, Scatter, ReferenceLine, Area } from 'recharts';
 import { SectionHead, Readout, NumberField, SliderField, Pills, Note, Empty, PanelBlock, InlineNumber, Word, Term } from './Bits';
-import { Assumptions, LocationResult, ProjectionResult, Price, effectiveExpenseRatio, pct } from '../services/RiskModel';
+import { Assumptions, LocationResult, ProjectionResult, Price, effectiveExpenseRatio, pct, TRIGGER_RANGE } from '../services/RiskModel';
 import { Currency, CURRENCIES, money, moneyShort, count } from '../services/Currency';
 import { POPULATION_YEAR, BASELINE, FUTURE } from '../services/ClimateData';
 
@@ -12,13 +12,11 @@ const HEAT = '#ff7a55';
 const COLD = '#6fb4f2';
 
 /**
- * Outer limits on a trigger temperature, set just beyond the hottest and
- * coldest air temperatures ever recorded on Earth: 56.7°C at Furnace Creek in
- * 1913 and −89.2°C at Vostok in 1983. No real location on the map is excluded,
- * and a typo cannot stretch the slider track to something absurd.
+ * Outer limits on a trigger temperature. Defined with the model, because a
+ * derived trigger has to land inside the range its own control can show.
  */
-export const MAX_HEAT_C = 60;
-export const MIN_COLD_C = -90;
+export const MAX_HEAT_C = TRIGGER_RANGE.heatMax;
+export const MIN_COLD_C = TRIGGER_RANGE.coldMin;
 
 /**
  * Both controls on a trigger temperature share one range, so the slider can
@@ -156,7 +154,22 @@ export const ProductSection: React.FC<{
   onPerilChange: (p: Peril) => void;
   currency: Currency;
   onCurrencyChange: (code: string) => void;
-}> = ({ a, onChange, onReset, isDefault, peril, onPerilChange, currency, onCurrencyChange }) => {
+  localHeatTrigger: number | null;
+  ownHeatTrigger: boolean;
+  onUseLocalHeatTrigger: () => void;
+}> = ({
+  a,
+  onChange,
+  onReset,
+  isDefault,
+  peril,
+  onPerilChange,
+  currency,
+  onCurrencyChange,
+  localHeatTrigger,
+  ownHeatTrigger,
+  onUseLocalHeatTrigger,
+}) => {
   const set = (patch: Partial<Assumptions>) => onChange({ ...a, ...patch });
 
   const signed = (v: number) => String(v).replace('-', '−');
@@ -208,6 +221,10 @@ export const ProductSection: React.FC<{
                     <span>{signed(MIN_COLD_C)}°C</span>
                     <span>0°C</span>
                   </div>
+                  <p className="trigger-note">
+                    A UK rule: the Cold Weather Payment pays on seven days averaging 0°C or below.
+                    It is absolute, so unlike the heat trigger it does not follow local climate.
+                  </p>
                 </div>
 
                 <div className="terms-line">
@@ -277,6 +294,24 @@ export const ProductSection: React.FC<{
                     <span>0°C</span>
                     <span>{MAX_HEAT_C}°C</span>
                   </div>
+                  {localHeatTrigger !== null && (
+                    <p className="trigger-note">
+                      {ownHeatTrigger && a.heatThreshold !== localHeatTrigger ? (
+                        <>
+                          Your figure. This spot's own climate gives{' '}
+                          <button type="button" className="jump" onClick={onUseLocalHeatTrigger}>
+                            {localHeatTrigger}°C
+                          </button>
+                          .
+                        </>
+                      ) : (
+                        <>
+                          Read from this spot: the 90th percentile of daily highs in June to August,
+                          1991 to 2020. The Met Office sets county heatwave thresholds the same way.
+                        </>
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 <div className="terms-line">
@@ -410,7 +445,7 @@ export const RiskSection: React.FC<{
 
         {result && !loading && (
           <div className="space-y-3">
-            <PanelBlock head="Frequency and warming trend">
+            <PanelBlock head="Frequency and warming trend" scroll>
               <table className="data-table">
                 <thead>
                   <tr>
@@ -498,6 +533,17 @@ export const PriceSection: React.FC<{
   const showBoth = peril === 'both';
   const sel = pickPrice(result, peril);
   const separateTail = result.heat.price.tailPayout + result.cold.price.tailPayout;
+
+  /**
+   * A trigger can fire so often that the annual cap binds every year. The model
+   * still prices it, correctly, but the answer is the cost of a certainty
+   * rather than of a risk, and that is worth saying out loud. Twice the cap is
+   * the point where a run of bad luck stops being what drives the payout.
+   */
+  const certain = ([] as Array<'heat' | 'cold'>).concat(
+    showHeat && result.heat.price.priceable && result.heat.price.eventsPerYear > a.annualLimit * 2 ? ['heat'] : [],
+    showCold && result.cold.price.priceable && result.cold.price.eventsPerYear > a.annualLimit * 2 ? ['cold'] : []
+  );
 
   // Cover that runs both ways can carry two different payouts, so the plain
   // reading has to name both rather than pretend there is one figure.
@@ -612,6 +658,17 @@ export const PriceSection: React.FC<{
           ((showHeat && !result.heat.price.priceable) || (showCold && !result.cold.price.priceable)) && (
             <Note>A dash means this trigger never fired in the whole record. That does not mean it is impossible, only that there is nothing here to base a price on.</Note>
           )
+        )}
+        {certain.length > 0 && (
+          <Note>
+            The {certain.join(' and ')} trigger fires about{' '}
+            {certain
+              .map(k => (k === 'heat' ? result.heat.price : result.cold.price).eventsPerYear.toFixed(1))
+              .join(' and ')}{' '}
+            times a year against a cap of {a.annualLimit}, so the cap binds in almost every year and
+            the cover is closer to a certainty than a risk. The premium below is arithmetically
+            correct and commercially meaningless. Recalibrate the trigger for this location.
+          </Note>
         )}
         {showBoth && result.heat.price.priceable && result.cold.price.priceable && (
           <Note>

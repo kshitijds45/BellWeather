@@ -233,6 +233,9 @@ const product = (peril: 'heat' | 'cold' | 'both') =>
       onPerilChange: () => {},
       currency: GBP,
       onCurrencyChange: () => {},
+      localHeatTrigger: 28,
+      ownHeatTrigger: false,
+      onUseLocalHeatTrigger: () => {},
     })
   );
 
@@ -291,6 +294,9 @@ check('The sentence carries the chosen currency symbol', () => {
       onPerilChange: () => {},
       currency: inr,
       onCurrencyChange: () => {},
+      localHeatTrigger: 28,
+      ownHeatTrigger: false,
+      onUseLocalHeatTrigger: () => {},
     })
   );
   return plain(html).includes('Pay ₹') ? null : 'currency symbol not carried into the sentence';
@@ -300,6 +306,55 @@ check('The note explains what the sentence cannot, that part blocks are lost', (
   const text = plain(product('both'));
   if (!text.includes('Only whole blocks pay')) return 'note missing';
   if (!text.includes('do not carry over')) return 'note does not mention the lost remainder';
+  return null;
+});
+
+const productWith = (extra: Record<string, unknown>) =>
+  renderToStaticMarkup(
+    React.createElement(ProductSection, {
+      a: DEFAULTS,
+      onChange: () => {},
+      onReset: () => {},
+      isDefault: true,
+      peril: 'both',
+      onPerilChange: () => {},
+      currency: GBP,
+      onCurrencyChange: () => {},
+      localHeatTrigger: 28,
+      ownHeatTrigger: false,
+      onUseLocalHeatTrigger: () => {},
+      ...extra,
+    } as never)
+  );
+
+check('The heat trigger says where it came from', () => {
+  // A trigger temperature is meaningless without its provenance: 28°C is a
+  // London figure, not a definition of hot.
+  const text = plain(productWith({}));
+  if (!text.includes('90th percentile')) return 'the rule is not named';
+  if (!text.includes('1991 to 2020')) return 'the baseline is not named';
+  if (!text.includes('Met Office')) return 'the source is not named';
+  return null;
+});
+
+check('A trigger the user set is not passed off as the local figure', () => {
+  const text = plain(productWith({ ownHeatTrigger: true, a: { ...DEFAULTS, heatThreshold: 33 } }));
+  if (!text.includes('Your figure')) return 'a typed trigger is still labelled as derived';
+  if (!text.includes('28')) return 'the local figure is not offered back';
+  return null;
+});
+
+check('No provenance is claimed before the record has loaded', () => {
+  const text = plain(productWith({ localHeatTrigger: null }));
+  if (text.includes('90th percentile')) return 'claims a derivation with no record behind it';
+  if (text.includes('undefined') || text.includes('null')) return 'printed a placeholder value';
+  return null;
+});
+
+check('The cold trigger is named as the UK rule it is', () => {
+  const text = plain(productWith({}));
+  if (!text.includes('Cold Weather Payment')) return 'the cold source is not named';
+  if (!text.includes('absolute')) return 'does not say the cold trigger is absolute';
   return null;
 });
 

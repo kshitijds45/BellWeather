@@ -1,6 +1,7 @@
 import {
   countEvents, detrend, fitFrequency, paidDistribution, outcomesFrom, combineOutcomes,
   priceFrom, effectiveExpenseRatio, analyse, project, DEFAULTS, TAIL_LEVEL, pct,
+  percentile, derivedHeatThreshold,
 } from '../src/app/services/RiskModel';
 import type { DailySeries, ModelSeries } from '../src/app/services/ClimateData';
 
@@ -134,6 +135,66 @@ console.log('\n--- G. Volume discount ---');
     effectiveExpenseRatio(on,1) < on.targetCombinedRatio);
   ck('Zero customers does not divide by zero', isFinite(effectiveExpenseRatio(on,0)));
 }
+
+console.log('\n--- H. Trigger read from local climate ---');
+{
+  /** Daily maxima across real summers, so the percentile has a season to work on. */
+  const season = (from: number, to: number, value: (day: number) => number) => {
+    const dates: string[] = []; const tmax: Array<number | null> = [];
+    for (let y = from; y <= to; y++) for (const m of [6, 7, 8]) for (let d = 1; d <= 30; d++) {
+      dates.push(`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+      tmax.push(value((m - 6) * 30 + d));
+    }
+    return { dates, tmax };
+  };
+
+  ck('Percentile returns the ends exactly', percentile([1,2,3,4], 0) === 1 && percentile([1,2,3,4], 1) === 4);
+  ck('Percentile interpolates between ranks', percentile([0,10], 0.9) === 9);
+  ck('Percentile of nothing is null', percentile([], 0.9) === null);
+
+  // Ninety summer days running 10.3°C to 37°C, repeated across the baseline.
+  // The 90th percentile sits on day 81, which is 34.3°C, so the trigger is 34.
+  const ramp = season(1991, 2020, d => 10 + d * 0.3);
+  ck('Heat trigger is the 90th percentile of the local summer',
+    derivedHeatThreshold(ramp.dates, ramp.tmax) === 34, `got ${derivedHeatThreshold(ramp.dates, ramp.tmax)}`);
+
+  const mild = season(1991, 2020, d => 10 + d * 0.1);
+  const hot  = season(1991, 2020, d => 25 + d * 0.1);
+  const mt = derivedHeatThreshold(mild.dates, mild.tmax)!;
+  const ht = derivedHeatThreshold(hot.dates, hot.tmax)!;
+  ck('A hotter place gets a higher trigger', ht > mt, `${mt} then ${ht}`);
+  ck('A uniform 15 degree shift moves the trigger by 15', ht - mt === 15);
+
+  const flat = season(1991, 2020, () => 20);
+  const noisy = {
+    dates: [...flat.dates, '1985-07-01', '2024-07-01', '2000-01-15'],
+    tmax: [...flat.tmax, 99, 99, -99],
+  };
+  ck('Years outside 1991 to 2020 and months outside summer are ignored',
+    derivedHeatThreshold(noisy.dates, noisy.tmax) === 20, `got ${derivedHeatThreshold(noisy.dates, noisy.tmax)}`);
+
+  const holed = { dates: ramp.dates, tmax: ramp.tmax.map((v, i) => (i % 7 === 0 ? null : v)) };
+  const hv = derivedHeatThreshold(holed.dates, holed.tmax);
+  ck('Gaps in the record do not shift the trigger', hv !== null && Math.abs(hv - 34) <= 1, `got ${hv}`);
+
+  const oneSummer = season(2019, 2019, d => 10 + d * 0.3);
+  ck('One summer is not a climatology, so no trigger is invented',
+    derivedHeatThreshold(oneSummer.dates, oneSummer.tmax) === null);
+
+  // Somewhere far colder and somewhere far hotter than the controls allow.
+  let reachable = true;
+  for (const offset of [-60, -30, 0, 10, 25, 40, 70]) {
+    const s = season(1991, 2020, d => offset + d * 0.2);
+    const t = derivedHeatThreshold(s.dates, s.tmax);
+    if (t !== null && (t < 0 || t > 60)) reachable = false;
+  }
+  ck('The derived trigger always lands inside what the controls accept', reachable);
+
+  const polar = season(1991, 2020, d => -40 + d * 0.05);
+  ck('A place too cold for heat cover is held at the bottom of the range, not below it',
+    derivedHeatThreshold(polar.dates, polar.tmax) === 0, `got ${derivedHeatThreshold(polar.dates, polar.tmax)}`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fails.length) console.log('FAILED:', fails.join(' | '));
 process.exit(fail?1:0);

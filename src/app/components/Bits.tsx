@@ -224,16 +224,22 @@ export const Empty: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   </div>
 );
 
-export const PanelBlock: React.FC<{ head: string; children: React.ReactNode; aside?: React.ReactNode }> = ({
-  head,
-  children,
-  aside,
-}) => (
+/**
+ * A titled panel. `scroll` lets a wide table slide sideways inside it rather
+ * than overflowing the column and clipping its last figures, which is what a
+ * four column table does once the content pane gets narrow.
+ */
+export const PanelBlock: React.FC<{
+  head: string;
+  children: React.ReactNode;
+  aside?: React.ReactNode;
+  scroll?: boolean;
+}> = ({ head, children, aside, scroll }) => (
   <div className="panel">
     <div className="panel-head flex items-center justify-between gap-3">
       <span>{head}</span>
       {aside}
     </div>
-    <div className="p-3.5">{children}</div>
+    <div className={scroll ? 'p-3.5 overflow-x-auto' : 'p-3.5'}>{children}</div>
   </div>
 );

@@ -27,12 +27,18 @@ Both default triggers are official UK definitions:
 
 | Peril | Trigger | Source |
 | --- | --- | --- |
-| Heatwave | 3+ consecutive days with maximum at or above 28°C | Met Office heatwave definition, Greater London |
+| Heatwave | 3+ consecutive days with maximum at or above a trigger read from the local record | Met Office heatwave definition, with its 90th percentile rule applied at the selected point rather than its London answer |
 | Cold wave | Each 7 consecutive days with mean at or below 0°C | Cold Weather Payment trigger |
 
 ## The pricing chain
 
 1. **Event history.** Daily temperature at the area's centre, 1991 to the last complete year.
+0. **Heat trigger.** The 90th percentile of daily maximum temperature across June to August,
+   1991 to 2020, rounded to a whole degree. This is the Met Office's own rule for setting county
+   heatwave thresholds, applied at the selected point instead of copying a published county figure.
+   Computed on reanalysis rather than the Met Office's gridded observations, so it can sit about a
+   degree from a published value. The cold trigger is not derived: the Cold Weather Payment is an
+   absolute national rule and is used as published.
 2. **Trend adjustment.** A linear trend in summer (for heat) and winter (for cold) temperature is
    removed, so every past year is priced as if it happened in today's climate. A plain average
    underprices heat and overprices cold.
@@ -93,7 +99,7 @@ choices rather than findings.
 
 ## Validation
 
-133 automated checks in `tests/`, covering the counting rules, trend adjustment,
+148 automated checks in `tests/`, covering the counting rules, trend adjustment,
 distribution fitting, pricing identities, the projection path, the data layer
 (with a stubbed network) the chart axes, tooltips and slider ranges, and the wording of the policy terms.
 Includes a 400-case fuzz over random assumption sets

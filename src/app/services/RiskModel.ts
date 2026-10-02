@@ -117,6 +117,86 @@ export function detrend(
 }
 
 // ---------------------------------------------------------------------------
+// 1b. Trigger temperature derived from local climate
+// ---------------------------------------------------------------------------
+
+/** The months the heat threshold and the heat trend are both read over. */
+export const HEAT_SEASON = [6, 7, 8];
+
+/** The Met Office rebaselined its thresholds to this period ahead of 2022. */
+export const THRESHOLD_BASELINE = { start: 1991, end: 2020 };
+
+/** The percentile the Met Office uses to set a county's heatwave threshold. */
+export const THRESHOLD_PERCENTILE = 0.9;
+
+/**
+ * Outer limits on a trigger temperature, set just beyond the hottest and
+ * coldest air temperatures ever recorded on Earth: 56.7°C at Furnace Creek in
+ * 1913 and -89.2°C at Vostok in 1983. The sliders and the typed boxes share
+ * these, and a derived trigger has to land inside them or the control could
+ * not show the figure it was given.
+ */
+export const TRIGGER_RANGE = { heatMin: 0, heatMax: 60, coldMin: -90, coldMax: 0 };
+
+/** Linear interpolation between closest ranks, the common convention. */
+export function percentile(sorted: number[], p: number): number | null {
+  if (!sorted.length) return null;
+  if (sorted.length === 1) return sorted[0];
+  const i = (sorted.length - 1) * Math.min(1, Math.max(0, p));
+  const lo = Math.floor(i);
+  const hi = Math.ceil(i);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+}
+
+/**
+ * The heat trigger a location's own climate implies.
+ *
+ * The Met Office does not pick county heatwave thresholds by hand. Each one is
+ * the 90th percentile of daily maximum temperature for that county, which is
+ * why they run from 25°C in Scotland to 28°C in Greater London, and why eight
+ * counties moved up when the baseline was rebased from 1981-2010 to 1991-2020.
+ *
+ * Applying one county's number everywhere is the single biggest error a tool
+ * like this can make, because the trigger drives the event count directly.
+ * Reading the rule off the local record instead gives a trigger that means the
+ * same thing in every place: unusually hot for here.
+ *
+ * Computed on reanalysis rather than the Met Office's own gridded
+ * observations, so it can sit a degree away from a published county figure.
+ * Returns null when the record is too short to support the percentile.
+ */
+export function derivedHeatThreshold(
+  dates: string[],
+  tmax: Array<number | null>
+): number | null {
+  const season: number[] = [];
+  dates.forEach((d, i) => {
+    const y = yearOf(d);
+    if (y < THRESHOLD_BASELINE.start || y > THRESHOLD_BASELINE.end) return;
+    const m = Number(d.slice(5, 7));
+    if (!HEAT_SEASON.includes(m)) return;
+    const v = tmax[i];
+    if (v === null || v === undefined || !isFinite(v)) return;
+    season.push(v);
+  });
+
+  // A couple of seasons is not a climatology. Below that, say so rather than
+  // inventing a threshold from a handful of summers.
+  if (season.length < 180) return null;
+
+  season.sort((a, b) => a - b);
+  const p = percentile(season, THRESHOLD_PERCENTILE);
+  if (p === null) return null;
+
+  // Somewhere cold enough, the 90th percentile of summer maxima falls below
+  // freezing. Heat cover is meaningless there, but the control still has to be
+  // able to show whatever it is handed, so the figure is held in range and the
+  // certainty check in the Price panel is left to say the rest.
+  return Math.min(TRIGGER_RANGE.heatMax, Math.max(TRIGGER_RANGE.heatMin, Math.round(p)));
+}
+
+// ---------------------------------------------------------------------------
 // 2. Event counting
 // ---------------------------------------------------------------------------
 
@@ -354,7 +434,7 @@ export interface PerilResult {
   observedMean: number;
 }
 
-const HEAT_MONTHS = [6, 7, 8];
+const HEAT_MONTHS = HEAT_SEASON;
 const COLD_MONTHS = [12, 1, 2];
 
 function analysePeril(
