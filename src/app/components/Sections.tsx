@@ -155,7 +155,6 @@ export const ProductSection: React.FC<{
   currency: Currency;
   onCurrencyChange: (code: string) => void;
   localHeatTrigger: number | null;
-  ownHeatTrigger: boolean;
   onUseLocalHeatTrigger: () => void;
 }> = ({
   a,
@@ -167,7 +166,6 @@ export const ProductSection: React.FC<{
   currency,
   onCurrencyChange,
   localHeatTrigger,
-  ownHeatTrigger,
   onUseLocalHeatTrigger,
 }) => {
   const set = (patch: Partial<Assumptions>) => onChange({ ...a, ...patch });
@@ -181,9 +179,12 @@ export const ProductSection: React.FC<{
         title="Set the policy"
         standfirst="The contract itself: how hot or cold it has to get, for how long and how much it pays. The starting values come from official UK definitions. Every figure in the panels below is rebuilt as you change these."
         aside={
-          !isDefault && (
-            <button onClick={onReset} className="btn-ghost">Reset</button>
-          )
+          // Always present, disabled at defaults. A control that vanishes as
+          // you type a value back to its starting figure makes the panel jump
+          // and reads as a glitch.
+          <button onClick={onReset} className="btn-ghost" disabled={isDefault}>
+            Reset
+          </button>
         }
       />
 
@@ -221,10 +222,6 @@ export const ProductSection: React.FC<{
                     <span>{signed(MIN_COLD_C)}°C</span>
                     <span>0°C</span>
                   </div>
-                  <p className="trigger-note">
-                    A UK rule: the Cold Weather Payment pays on seven days averaging 0°C or below.
-                    It is absolute, so unlike the heat trigger it does not follow local climate.
-                  </p>
                 </div>
 
                 <div className="terms-line">
@@ -294,24 +291,19 @@ export const ProductSection: React.FC<{
                     <span>0°C</span>
                     <span>{MAX_HEAT_C}°C</span>
                   </div>
-                  {localHeatTrigger !== null && (
-                    <p className="trigger-note">
-                      {ownHeatTrigger && a.heatThreshold !== localHeatTrigger ? (
-                        <>
-                          Your figure. This spot's own climate gives{' '}
-                          <button type="button" className="jump" onClick={onUseLocalHeatTrigger}>
-                            {localHeatTrigger}°C
-                          </button>
-                          .
-                        </>
-                      ) : (
-                        <>
-                          Read from this spot: the 90th percentile of daily highs in June to August,
-                          1991 to 2020. The Met Office sets county heatwave thresholds the same way.
-                        </>
-                      )}
-                    </p>
-                  )}
+                  <p className="trigger-note">
+                    Met Office threshold for Greater London. Set per county, 25°C to 28°C.
+                    {localHeatTrigger !== null && (
+                      <>
+                        {' '}
+                        The top 10% of summer days here reach{' '}
+                        <button type="button" className="jump" onClick={onUseLocalHeatTrigger}>
+                          {localHeatTrigger}°C
+                        </button>
+                        .
+                      </>
+                    )}
+                  </p>
                 </div>
 
                 <div className="terms-line">
@@ -429,7 +421,7 @@ export const RiskSection: React.FC<{
       <SectionHead
         index="04 / Hazard"
         title="How often it has happened"
-        standfirst="How many times your trigger would have fired at this spot, every year since 1991. The adjusted column restates each past year at today's climate, because the early years were cooler and would otherwise make the risk look smaller than it is. Every price in this tool is built on the adjusted figure."
+        standfirst="How often your trigger would have fired here, every year since 1991. The adjusted column restates each year at today's climate, and that is what every price is built on."
       />
 
       <div className="section-body">
@@ -829,7 +821,7 @@ export const OutlookSection: React.FC<{
       <SectionHead
         index="06 / Outlook"
         title="The price in 2050"
-        standfirst={`What the same policy would cost in a warmer world. Climate models run slightly hot or cold against real weather, so each one is compared against its own past rather than against reality, which cancels that bias out. You do not need this to price a policy for next year. You need it to decide whether to launch the product at all.`}
+        standfirst={`What the same policy costs in a warmer world. Not a price for next year, but the answer to whether the product is worth launching at all.`}
         aside={
           !hasRun && !loading ? (
             <button onClick={onRun} className="btn-solid inline-flex items-center gap-1.5">
@@ -841,7 +833,7 @@ export const OutlookSection: React.FC<{
 
       <div className="section-body space-y-3">
         {!hasRun && !loading && !error && (
-          <Empty>This pulls fifty years of daily forecasts from two climate models, which is by far the slowest thing on the page. It only runs when you ask.</Empty>
+          <Empty>This pulls fifty years of daily forecasts from two climate models. It only runs when you ask.</Empty>
         )}
         {loading && (
           <div className="panel panel-pad flex items-center gap-2 text-xs" style={{ color: 'var(--muted)' }}>
@@ -1015,7 +1007,7 @@ export const PortfolioSection: React.FC<{
       <SectionHead
         index="03 / Portfolio"
         title="Selling it at scale"
-        standfirst="What it looks like if you sell this across a whole city. Because every customer is covered by the same thermometer reading, they all get paid on the same day. That is why the worst-year figure is simply one customer multiplied by all of them."
+        standfirst="The same policy sold across a whole city. Everyone is covered by the same thermometer, so they all get paid on the same day and one bad year hits the whole book at once."
       />
 
       <div className="section-body space-y-3">
@@ -1112,7 +1104,6 @@ export const PortfolioSection: React.FC<{
                 {moneyShort(n * sel.capital, currency)} has to sit in reserve against it.
               </p>
             )}
-            <Note>The weather data covers squares roughly 9 to 25 km across, so one reading stands for the whole area. Spreading risk means selling in cities whose weather does not move together, not selling more in one city.</Note>
           </>
         )}
       </div>

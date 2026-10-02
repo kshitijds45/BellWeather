@@ -1094,3 +1094,15 @@ button.jump:hover {
   color: var(--muted);
   margin-top: 7px;
 }
+
+/* A disabled control stays in place and stops drawing attention, rather than
+   leaving the layout and taking its row's height with it. */
+.btn-ghost:disabled,
+.btn-solid:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn-ghost:disabled:hover {
+  border-color: var(--rule-strong);
+}

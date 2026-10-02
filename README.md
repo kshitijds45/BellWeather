@@ -27,18 +27,19 @@ Both default triggers are official UK definitions:
 
 | Peril | Trigger | Source |
 | --- | --- | --- |
-| Heatwave | 3+ consecutive days with maximum at or above a trigger read from the local record | Met Office heatwave definition, with its 90th percentile rule applied at the selected point rather than its London answer |
+| Heatwave | 3+ consecutive days with maximum at or above 28°C | Met Office heatwave definition, published Greater London threshold. Set per county, 25°C to 28°C |
 | Cold wave | Each 7 consecutive days with mean at or below 0°C | Cold Weather Payment trigger |
 
 ## The pricing chain
 
 1. **Event history.** Daily temperature at the area's centre, 1991 to the last complete year.
-0. **Heat trigger.** The 90th percentile of daily maximum temperature across June to August,
-   1991 to 2020, rounded to a whole degree. This is the Met Office's own rule for setting county
-   heatwave thresholds, applied at the selected point instead of copying a published county figure.
-   Computed on reanalysis rather than the Met Office's gridded observations, so it can sit about a
-   degree from a published value. The cold trigger is not derived: the Cold Weather Payment is an
-   absolute national rule and is used as published.
+   The heat trigger defaults to the published Greater London threshold rather than being derived.
+   The Met Office rule, the 90th percentile of the daily maximum climatology at the summer mid
+   point, is published in outline but not closely enough to reproduce, and it is computed on 1 km
+   station based observations rather than the ~25 km reanalysis read here, which runs cooler.
+   Measured on this data Greater London comes out near 25°C against a published 28°C and Scotland
+   near 18°C against a published 25°C. The computed percentile is shown in the Product panel as a
+   guide to local climate, not as the trigger. See Method.
 2. **Trend adjustment.** A linear trend in summer (for heat) and winter (for cold) temperature is
    removed, so every past year is priced as if it happened in today's climate. A plain average
    underprices heat and overprices cold.
@@ -99,7 +100,7 @@ choices rather than findings.
 
 ## Validation
 
-148 automated checks in `tests/`, covering the counting rules, trend adjustment,
+151 automated checks in `tests/`, covering the counting rules, trend adjustment,
 distribution fitting, pricing identities, the projection path, the data layer
 (with a stubbed network) the chart axes, tooltips and slider ranges, and the wording of the policy terms.
 Includes a 400-case fuzz over random assumption sets

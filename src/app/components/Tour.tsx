@@ -269,7 +269,7 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
               <h2>Pick an area on the map. Get a price you can defend.</h2>
               <div className="guide-grid4">
                 {[
-                  ['01', 'Built on evidence', 'Daily temperatures since 1991, adjusted for the warming trend, with the heat trigger read from the local record using the Met Office rule.', 'var(--g-cold)'],
+                  ['01', 'Built on evidence', 'Daily temperatures since 1991, adjusted for the warming trend so every past year counts as today\u2019s climate.', 'var(--g-cold)'],
                   ['02', 'Priced like an insurer', 'A premium set to a target profit margin, with the 1-in-200 year payout insurers must hold reserves against.', 'var(--g-ink)'],
                   ['03', 'From one policy to a city', 'Population data turns a single price into a full book: premiums taken in, payouts and reserves needed.', 'var(--g-ink)'],
                   ['04', 'Projected to 2050', 'Climate model projections show whether the product still works, and what it costs, in a warmer world.', 'var(--g-heat)'],

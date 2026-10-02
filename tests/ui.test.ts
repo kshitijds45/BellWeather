@@ -233,8 +233,7 @@ const product = (peril: 'heat' | 'cold' | 'both') =>
       onPerilChange: () => {},
       currency: GBP,
       onCurrencyChange: () => {},
-      localHeatTrigger: 28,
-      ownHeatTrigger: false,
+      localHeatTrigger: 25,
       onUseLocalHeatTrigger: () => {},
     })
   );
@@ -294,8 +293,7 @@ check('The sentence carries the chosen currency symbol', () => {
       onPerilChange: () => {},
       currency: inr,
       onCurrencyChange: () => {},
-      localHeatTrigger: 28,
-      ownHeatTrigger: false,
+      localHeatTrigger: 25,
       onUseLocalHeatTrigger: () => {},
     })
   );
@@ -320,41 +318,67 @@ const productWith = (extra: Record<string, unknown>) =>
       onPerilChange: () => {},
       currency: GBP,
       onCurrencyChange: () => {},
-      localHeatTrigger: 28,
-      ownHeatTrigger: false,
+      localHeatTrigger: 25,
       onUseLocalHeatTrigger: () => {},
       ...extra,
     } as never)
   );
 
-check('The heat trigger says where it came from', () => {
-  // A trigger temperature is meaningless without its provenance: 28°C is a
-  // London figure, not a definition of hot.
+check('Reset stays in place whatever the inputs say', () => {
+  // It used to render only when something differed from the defaults, so typing
+  // a value back to its starting figure made the button vanish and the panel
+  // jump. Present and disabled is steadier and says the same thing.
+  const atDefaults = productWith({ isDefault: true });
+  const changed = productWith({ isDefault: false });
+  if (!atDefaults.includes('Reset')) return 'Reset missing at defaults';
+  if (!changed.includes('Reset')) return 'Reset missing after a change';
+  if (!/<button[^>]*disabled[^>]*>\s*Reset/.test(atDefaults)) return 'Reset is active with nothing to reset';
+  if (/<button[^>]*disabled[^>]*>\s*Reset/.test(changed)) return 'Reset is disabled after a change';
+  return null;
+});
+
+check('The heat trigger says it is a London figure, not a universal one', () => {
+  // The default is the published Greater London threshold. Presented bare it
+  // reads as a definition of hot, which it is not.
   const text = plain(productWith({}));
-  if (!text.includes('90th percentile')) return 'the rule is not named';
-  if (!text.includes('1991 to 2020')) return 'the baseline is not named';
   if (!text.includes('Met Office')) return 'the source is not named';
+  if (!text.includes('Greater London')) return 'does not say which place the figure is for';
+  if (!text.includes('25°C to 28°C')) return 'does not say the threshold varies';
   return null;
 });
 
-check('A trigger the user set is not passed off as the local figure', () => {
-  const text = plain(productWith({ ownHeatTrigger: true, a: { ...DEFAULTS, heatThreshold: 33 } }));
-  if (!text.includes('Your figure')) return 'a typed trigger is still labelled as derived';
-  if (!text.includes('28')) return 'the local figure is not offered back';
-  return null;
-});
-
-check('No provenance is claimed before the record has loaded', () => {
-  const text = plain(productWith({ localHeatTrigger: null }));
-  if (text.includes('90th percentile')) return 'claims a derivation with no record behind it';
-  if (text.includes('undefined') || text.includes('null')) return 'printed a placeholder value';
-  return null;
-});
-
-check('The cold trigger is named as the UK rule it is', () => {
+check('The local summer figure is offered as a guide, not as the trigger', () => {
+  // It is computed on a 25 km reanalysis cell and does not reproduce the Met
+  // Office county values, so it must never be presented as the official number.
   const text = plain(productWith({}));
-  if (!text.includes('Cold Weather Payment')) return 'the cold source is not named';
-  if (!text.includes('absolute')) return 'does not say the cold trigger is absolute';
+  if (!text.includes('top 10% of summer days')) return 'the local figure is not explained';
+  if (!text.includes('25°C')) return 'the local figure is missing';
+  if (/Met Office[^.]*top 10%/.test(text)) return 'the local figure is attributed to the Met Office';
+  return null;
+});
+
+check('Nothing is claimed about the local climate before the record loads', () => {
+  const text = plain(productWith({ localHeatTrigger: null }));
+  if (text.includes('top 10%')) return 'claims a local figure with no record behind it';
+  if (text.includes('undefined') || text.includes('null')) return 'printed a placeholder value';
+  if (!text.includes('Met Office')) return 'lost the provenance line entirely';
+  return null;
+});
+
+check('The cold trigger still names its source after the note was cut', () => {
+  // The per-slider cold note duplicated the panel's own note, so it was removed.
+  // What must survive is that the figure is named as a UK scheme rather than a
+  // number someone picked.
+  const text = plain(productWith({}));
+  if (!text.includes('Cold Weather Payment')) return 'the cold source is not named anywhere in the panel';
+  return null;
+});
+
+check('Only the heat trigger carries a note beside its slider', () => {
+  // Two notes under two sliders made the Cover panel heavy. The heat one earns
+  // its place because 28°C reads as a definition of hot without it.
+  const notes = (productWith({}).match(/class="trigger-note"/g) || []).length;
+  if (notes !== 1) return `${notes} slider notes, expected one`;
   return null;
 });
 

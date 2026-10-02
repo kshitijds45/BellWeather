@@ -97,7 +97,7 @@ export const Method: React.FC = () => (
           <Table
             head={['Peril', 'Default setting', 'Where it comes from']}
             rows={[
-              ['Heatwave', `Every ${DEFAULTS.heatDuration} days in a row at or above a trigger read from the local record`, 'The Met Office definition of a heatwave, with its threshold rule applied here rather than its London answer'],
+              ['Heatwave', `Every ${DEFAULTS.heatDuration} days in a row where the day reaches at least ${DEFAULTS.heatThreshold}°C`, 'The Met Office definition of a heatwave. 28°C is the published threshold for Greater London, and it is set per county from 25°C to 28°C'],
               ['Cold wave', `Every ${DEFAULTS.coldDuration} days in a row where the day averages ${DEFAULTS.coldThreshold}°C or below`, 'The trigger for the UK Cold Weather Payment, a government scheme that already works this way'],
             ]}
           />
@@ -113,36 +113,40 @@ export const Method: React.FC = () => (
           </P>
         </Sub>
 
-        <Sub title="Where the heat trigger comes from">
+        <Sub title="Where the heat trigger comes from, and why it is not derived">
           <P>
-            The Met Office does not choose county heatwave thresholds by hand. Each one is the 90th
-            percentile of daily maximum temperature for that county, which is why they run from 25°C
-            in Scotland to 28°C in Greater London, and why eight counties moved up when the baseline
-            was rebased from 1981 to 2010 onto 1991 to 2020.
+            The Met Office does not choose county heatwave thresholds by hand. Each is drawn from the
+            90th percentile of the daily maximum temperature climatology at the summer mid point,
+            rebased onto 1991 to 2020 ahead of summer 2022. There are four thresholds across the UK,
+            running from 25°C in Wales and Scotland to 28°C in London and parts of the East Midlands.
           </P>
           <P>
-            This tool applies that rule rather than copying its answers. The default heat trigger is
-            the 90th percentile of daily maximum temperature at the selected spot across June, July
-            and August, 1991 to 2020, rounded to a whole degree. A fixed figure would mean one thing
-            in London and something quite different in Glasgow or Lagos. Read from the local record
-            it means the same thing everywhere: unusually hot for here.
-          </P>
-          <F>
-            heat trigger = round( 90th percentile of daily maximum, Jun to Aug, 1991 to 2020 )
-          </F>
-          <P>
-            Two caveats. The percentile here is computed on reanalysis rather than on the Met Office's
-            own gridded observations, so it can sit about a degree away from a published county
-            figure; against Greater London it should read near 28°C. And the Met Office rebaselines
-            its thresholds as the climate warms, which an insurance contract cannot do. So the derived
-            figure sets the default once and then holds as a contract term, with the warming handled
-            where it belongs, in the trend adjustment on the hazard. Letting both move would count the
-            same warming twice.
+            This tool tried to apply that rule rather than copy its answers, computing the percentile
+            from the same record it prices on. It does not reproduce the published figures, and the
+            attempt is documented here rather than buried because the reason matters.
           </P>
           <P>
-            The cold trigger is not derived. The Cold Weather Payment is an absolute national rule at
-            0°C, so it is used as published. That asymmetry is deliberate: the heat rule is relative
-            because acclimatisation matters, and the cold rule is absolute because freezing is.
+            Two things pull it off. The published rule is specified in outline but not closely enough
+            to reproduce: the window around the summer mid point, the smoothing and any rounding
+            convention are not public. And the Met Office computes on its own station based gridded
+            observations at 1 km, whereas this tool reads a reanalysis grid cell of roughly 25 km. A
+            cell that size averages a city with the countryside around it and flattens the daily peak,
+            so it runs cooler, and it runs cooler by more in places with a sharper seasonal cycle.
+            Measured here, Greater London comes out near 25°C against a published 28°C, and Scotland
+            near 18°C against a published 25°C.
+          </P>
+          <P>
+            So the default stays at the published Greater London figure, with the panel saying plainly
+            that it is a London number and needs changing elsewhere. The computed percentile is still
+            shown beside it as a guide to what counts as unusually hot at the selected spot, because a
+            trigger of 28°C in Scotland tells you something useful about the product even when it is
+            the wrong number to write.
+          </P>
+          <P>
+            The cold trigger is not derived either. The Cold Weather Payment is an absolute national
+            rule at 0°C, so it is used as published. That asymmetry is deliberate: the heat rule is
+            relative because acclimatisation matters, and the cold rule is absolute because freezing
+            is.
           </P>
         </Sub>
 
@@ -465,7 +469,7 @@ export const Method: React.FC = () => (
         <Table
           head={['Setting', 'How solid', 'Based on']}
           rows={[
-            ['Heat trigger', 'Official rule, local figure', 'The Met Office 90th percentile rule, computed on this location rather than looked up'],
+            ['Heat trigger', 'Official', 'The Met Office heatwave definition, published Greater London threshold'],
             ['Cold trigger', 'Official', 'The UK Cold Weather Payment scheme'],
             ['1-in-200 reserve standard', 'Official', 'UK and EU insurance capital rules'],
             ['Claims share benchmark', 'Official', 'FCA published value measures data, 2024'],
