@@ -475,6 +475,26 @@ check('The guide credits its author and says how to reopen it', () => {
   return null;
 });
 
+check('The guide is a card on a scrim, not a full screen takeover', () => {
+  // The console has to stay visible behind it, which is what lets a visitor
+  // see the thing the guide is describing while they read about it.
+  if (!guide.includes('class="guide-panel"')) return 'no card inside the scrim';
+  const panels = (guide.match(/class="guide-panel"/g) || []).length;
+  if (panels !== 1) return `${panels} cards rendered`;
+  return null;
+});
+
+check('The guide keeps its controls inside the card', () => {
+  // Floating the arrows at the window edges would put them over the console,
+  // which is the part the card exists to leave visible.
+  if (!guide.includes('class="guide-foot"')) return 'no footer row';
+  const foot = guide.slice(guide.indexOf('class="guide-foot"'));
+  for (const want of ['Previous page', 'Next page', 'Page 1:']) {
+    if (!foot.includes(want)) return `${want} is not in the footer`;
+  }
+  return null;
+});
+
 check('The guide renders nothing when closed', () => {
   const shut = renderToStaticMarkup(React.createElement(Tour, { open: false, onClose: () => {} }));
   return shut === '' ? null : 'rendered while closed';
