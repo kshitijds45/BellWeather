@@ -1,6 +1,6 @@
 # Validation
 
-122 checks over the pricing model, the full analysis chain, the data layer and
+129 checks over the pricing model, the full analysis chain, the data layer and
 the interface. No test framework: each file is a standalone script that exits
 non-zero on failure, so it runs anywhere Node and esbuild are available.
 
@@ -9,7 +9,7 @@ non-zero on failure, so it runs anywhere Node and esbuild are available.
 | `model.test.ts` | 44 | Event counting rules, trend adjustment, frequency fitting, distributions, money outcomes, pricing identities, volume discount |
 | `analysis.test.ts` | 23 | Full analysis, peril bundling, projection path and bands, plus a 400-case fuzz over random assumptions |
 | `data.test.ts` | 22 | Request construction, error handling, rate-limit backoff, climate model parsing, WorldPop polygon and task polling, geometry |
-| `ui.test.ts` | 33 | Axis ticks always keep the final year, the outlook tooltip renders the confidence band as a range, a slider reaches every value its typed box accepts, the policy terms read as one sentence, and the pinned results strip labels its scales and survives every data state |
+| `ui.test.ts` | 40 | Axis ticks always keep the final year, the outlook tooltip renders the confidence band as a range, a slider reaches every value its typed box accepts, the policy terms read as one sentence, the pinned results strip labels its scales and survives every data state, and the guide stays in step with the console it describes |
 
 Run one with:
 
@@ -17,10 +17,11 @@ Run one with:
 npx esbuild tests/model.test.ts --bundle --platform=node --outfile=/tmp/t.js && node /tmp/t.js
 ```
 
-`ui.test.ts` renders components, so it needs the JSX flag:
+`ui.test.ts` renders components, so it needs the JSX flag and a stylesheet
+loader, because the guide imports its own CSS:
 
 ```bash
-npx esbuild tests/ui.test.ts --bundle --platform=node --jsx=automatic --outfile=/tmp/t.js && node /tmp/t.js
+npx esbuild tests/ui.test.ts --bundle --platform=node --jsx=automatic --loader:.css=empty --outfile=/tmp/t.js && node /tmp/t.js
 ```
 
 The data tests stub `globalThis.fetch`, so nothing touches the network.

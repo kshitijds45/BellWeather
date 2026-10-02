@@ -1,193 +1,386 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X, ArrowRight, ArrowLeft } from 'lucide-react';
-import { TOOL_NAME, TOOL_TAGLINE, CREATOR } from '../branding';
-import { Logo } from './Logo';
+import { TOOL_NAME, CREATOR } from '../branding';
+import '../../styles/guide.css';
 
 const STORAGE_KEY = 'bellweather-tour-seen-v1';
 
-interface Step {
-  title: string;
-  /** A step is either one block of prose, or a lead line, a labelled list and a closing line. */
-  body?: string;
-  lead?: string;
-  items?: Array<[string, string]>;
-  tail?: string;
-}
+const PAGES = ['Cover', 'The opportunity', 'The offering', 'How to navigate it', 'Start'];
 
-const STEPS: Step[] = [
-  {
-    title: 'What this does',
-    body:
-      'BellWeather prices insurance that pays a fixed sum when temperature crosses an agreed threshold. Settlement follows a published weather index rather than an assessment of loss, which removes claims handling from the product entirely and reduces pricing to a single question: how often that threshold is crossed. Thirty five years of historical weather data answers it for any location on the map.',
-  },
-  {
-    title: 'How to use it',
-    lead: 'Select an area on the map, then work down the panels. The bar under the tabs carries the headline figures wherever you are.',
-    items: [
-      ['01 Product', 'Set the terms. How hot or cold it has to get, for how long and how much it pays.'],
-      ['02 Price', 'The premium to charge, the reserve it ties up and the return that reserve earns.'],
-      ['03 Portfolio', 'The same policy sold across a whole city, at the take-up rate you choose.'],
-      ['04 Hazard', 'How often those terms would have paid out at that spot, every year since 1991. This is the evidence the price is built on.'],
-      ['05 Sensitivity', 'One assumption moved across a range, so you can see what the price is most exposed to.'],
-      [
-        '06 Outlook',
-        'The same policy priced to 2050 under climate models. It answers whether the product still works in a warmer world, not what to charge next year.',
-      ],
-    ],
-    tail: 'Every figure recalculates as you change an input.',
-  },
-  {
-    title: 'Scope and limits',
-    body:
-      'Default triggers follow the Met Office heatwave definition and the UK Cold Weather Payment rule. The reserve standard follows Solvency UK. All are editable. The index cannot reflect an individual policyholder\u2019s actual loss, and no settlement source is named here, so this is an analytical tool rather than a quotation. Method sets out every source, formula and limitation behind the figures.',
-  },
+/** The bell curve, drawn at whatever size the caller needs. */
+const Mark: React.FC<{ className?: string; width?: number; height?: number; stroke?: number }> = ({
+  className,
+  width,
+  height,
+  stroke = 26,
+}) => (
+  <svg
+    className={className}
+    width={width}
+    height={height}
+    viewBox="-22 -22 530 412"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M3.5 364.505C180.501 356.505 139 2.00481 247.5 3.50481"
+      stroke="var(--g-cold)"
+      strokeWidth={stroke}
+      strokeLinecap="round"
+    />
+    <path
+      d="M247.5 3.50482C356 5.00482 305.001 336.005 482 364.505"
+      stroke="var(--g-heat)"
+      strokeWidth={stroke}
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const TABS: Array<[string, string]> = [
+  ['01 Product', 'Set the terms of the policy'],
+  ['02 Price', 'What to charge and why'],
+  ['03 Portfolio', 'The policy sold across a city'],
+  ['04 Hazard', 'How often it would have paid out'],
+  ['05 Sensitivity', 'What the price is most exposed to'],
+  ['06 Outlook', 'The same policy priced to 2050'],
 ];
 
-
-
-
+/**
+ * A scale drawing of the console, so the three numbered moves point at
+ * something the reader recognises the moment the guide closes. It mirrors the
+ * real layout: half map, half analysis, tabs then the pinned results.
+ */
+const Mock: React.FC = () => (
+  <div className="guide-mock-wrap" aria-hidden="true">
+    <div className="guide-mock">
+      <div className="guide-mock-top">
+        <Mark width={15} height={11} stroke={44} />
+        {TOOL_NAME}
+        <div className="guide-pill">
+          <span>Analysis</span>
+          <span>Method</span>
+        </div>
+      </div>
+      <div className="guide-mock-body">
+        <div className="guide-mock-map">
+          <div className="guide-search">Search any city</div>
+          <div className="guide-area" />
+          <div className="guide-caption">Pricing this area</div>
+        </div>
+        <div className="guide-mock-pane">
+          <div className="guide-mock-tabs">
+            {TABS.map(([name], i) => (
+              <span key={name} data-on={i === 0 ? '' : undefined}>
+                {name}
+              </span>
+            ))}
+          </div>
+          <div className="guide-mock-strip">
+            <div>
+              <i>One policy</i>
+              <b>£ ··</b>
+            </div>
+            <div>
+              <i>The whole book</i>
+              <span className="guide-book">
+                <span>·· customers</span>
+                <span>£·· premium</span>
+                <span>£·· reserve</span>
+              </span>
+            </div>
+          </div>
+          <div className="guide-mock-panels">
+            <div className="guide-p" />
+            <div className="guide-p">
+              <div className="guide-bars">
+                {[30, 55, 20, 75, 40, 95, 60].map((h, i) => (
+                  <span key={i} style={{ height: `${h}%` }} />
+                ))}
+              </div>
+            </div>
+            <div className="guide-p" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <span className="guide-tag" data-t="1">1</span>
+    <span className="guide-tag" data-t="2">2</span>
+    <span className="guide-tag" data-t="3">3</span>
+  </div>
+);
 
 export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
-  const [step, setStep] = useState(0);
+  const [page, setPage] = useState(0);
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (open) setStep(0);
+    if (open) setPage(0);
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
+    const go = (n: number) => setPage(p => Math.max(0, Math.min(PAGES.length - 1, p + n)));
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowRight') setStep(s => Math.min(s + 1, STEPS.length - 1));
-      if (e.key === 'ArrowLeft') setStep(s => Math.max(s - 1, 0));
+      if (e.key === 'Escape') return onClose();
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+      if (e.key === 'Home') setPage(0);
+      if (e.key === 'End') setPage(PAGES.length - 1);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  // Each page starts at its own top, so a long page does not hand the next one
+  // a scrolled viewport.
+  useEffect(() => {
+    panelRef.current?.querySelectorAll('.guide-slide').forEach(el => {
+      (el as HTMLElement).scrollTop = 0;
+    });
+  }, [page]);
+
   if (!open) return null;
-  const first = step === 0;
-  const last = step === STEPS.length - 1;
-  const current = STEPS[step];
+
+  const last = page === PAGES.length - 1;
+
+  const slide = (i: number, label: string, children: React.ReactNode, innerClass?: string) => (
+    <section
+      className="guide-slide"
+      data-state={i === page ? 'active' : i < page ? 'before' : 'after'}
+      aria-hidden={i === page ? 'false' : 'true'}
+      aria-label={label}
+    >
+      <div className={innerClass ? `guide-inner ${innerClass}` : 'guide-inner'}>{children}</div>
+    </section>
+  );
 
   return (
     <div
-      className="fixed inset-0 z-[3000] flex items-center justify-center p-4"
-      style={{ background: 'rgba(12, 14, 16, 0.82)', backdropFilter: 'blur(6px)' }}
+      className="guide"
       role="dialog"
       aria-modal="true"
-      aria-label={`${TOOL_NAME} walkthrough`}
+      aria-label={`${TOOL_NAME} guide`}
+      ref={panelRef}
     >
-      <div
-        className="panel w-full max-w-lg relative"
-        style={{
-          boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
-          // The six-panel list makes step two the tallest, so the dialog scrolls
-          // rather than clipping on a short window.
-          maxHeight: 'calc(100vh - 2rem)',
-          overflowY: 'auto',
-        }}
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 p-1.5 rounded-md"
-          style={{ color: 'var(--muted)', background: 'transparent', border: 0, cursor: 'pointer' }}
-          aria-label="Close walkthrough"
-        >
-          <X className="size-4" />
+      <header className="guide-topbar">
+        <button className="guide-wordmark" onClick={() => setPage(0)} aria-label="Back to the first page">
+          <Mark width={30} height={23} stroke={40} />
+          {TOOL_NAME}
         </button>
-        <div className="p-6">
-          {first && (
-            <div className="mb-5 pb-4" style={{ borderBottom: '1px solid var(--rule)' }}>
-              <div className="flex items-center gap-3">
-                <Logo size={34} weight={30} />
-                <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em', lineHeight: 1 }}>{TOOL_NAME}</h1>
-              </div>
-              <p className="text-xs mt-2.5" style={{ color: 'var(--muted)' }}>{TOOL_TAGLINE}</p>
-            </div>
-          )}
-          <h2 className="mb-2.5" style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em' }}>{current.title}</h2>
-          {current.body && (
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{current.body}</p>
-          )}
-          {current.lead && (
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{current.lead}</p>
-          )}
-          {current.items && (
-            <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0' }}>
-              {current.items.map(([name, text]) => (
-                <li
-                  key={name}
-                  className="text-sm leading-relaxed"
-                  style={{ color: 'var(--ink-soft)', marginTop: 4 }}
-                >
-                  <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{name}</span> {text}
-                </li>
-              ))}
-            </ul>
-          )}
-          {current.tail && (
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)', marginTop: 10 }}>
-              {current.tail}
-            </p>
-          )}
-
-          <div className="flex items-center justify-between mt-6 pt-4" style={{ borderTop: '1px solid var(--rule)' }}>
-            <div className="flex items-center gap-1.5">
-              {STEPS.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setStep(i)}
-                  aria-label={`Step ${i + 1}`}
-                  style={{
-                    width: i === step ? 18 : 6,
-                    height: 6,
-                    borderRadius: 999,
-                    background: i === step ? 'var(--signal)' : 'var(--rule-strong)',
-                    border: 0,
-                    cursor: 'pointer',
-                  }}
-                />
-              ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={onClose} className="btn-ghost" style={{ color: 'var(--muted)', background: 'transparent', border: 0, cursor: 'pointer' }}>
-                Skip
-              </button>
-              {!first && (
-                <button
-                  onClick={() => setStep(s => s - 1)}
-                  className="btn-ghost inline-flex items-center gap-1"
-                  
-                >
-                  <ArrowLeft className="size-3" /> Back
-                </button>
-              )}
-              <button
-                onClick={() => (last ? onClose() : setStep(s => s + 1))}
-                className="btn-solid inline-flex items-center gap-1.5"
-                
-              >
-                {last ? 'Start' : 'Next'}
-                {!last && <ArrowRight className="size-3" />}
-              </button>
-            </div>
+        <div className="guide-topbar-right">
+          <div className="guide-counter" aria-live="polite">
+            <b>{String(page + 1).padStart(2, '0')}</b> / {String(PAGES.length).padStart(2, '0')}
           </div>
-          {first && <p className="text-xs mt-4" style={{ color: 'var(--muted)' }}>Built by {CREATOR}</p>}
+          <button className="guide-close" onClick={onClose}>
+            <X className="size-3.5" />
+            Skip to the tool
+          </button>
         </div>
-      </div>
+      </header>
+
+      <main className="guide-deck">
+        {slide(
+          0,
+          'BellWeather',
+          <>
+            <Mark className="guide-mark" />
+            <h1>{TOOL_NAME}</h1>
+            <p className="guide-tagline">
+              Heatwave and cold wave insurance, priced from open climate data.
+            </p>
+            <div className="guide-by">
+              By <strong>{CREATOR}</strong>
+            </div>
+            <p className="guide-hint">A two minute guide · Use the arrows to continue</p>
+          </>,
+          'guide-cover'
+        )}
+
+        {slide(
+          1,
+          'The opportunity',
+          <>
+            <p className="guide-eyebrow">The opportunity</p>
+            <h2>Extreme temperatures are a growing risk that is hard to insure.</h2>
+            <p className="guide-lede">
+              Heat and cold rarely damage property in a way an adjuster can measure. They cost people
+              in lost work, health and energy bills. Traditional insurance struggles to price that.
+              Parametric insurance does not.
+            </p>
+            <div className="guide-split">
+              <article className="guide-card" style={{ ['--g-accent' as string]: 'var(--g-cold)' }}>
+                <div className="guide-label">Why parametric</div>
+                <h3>It pays on the weather, not on a claim.</h3>
+                <p>
+                  The policy pays a fixed sum when temperature crosses an agreed line. There is no
+                  claim form and no loss adjuster. That leaves one pricing question: how often does
+                  the line get crossed?
+                </p>
+              </article>
+              <article className="guide-card" style={{ ['--g-accent' as string]: 'var(--g-heat)' }}>
+                <div className="guide-label">Why this tool</div>
+                <h3>It answers that question for any place, in minutes.</h3>
+                <p>
+                  Pricing this kind of cover usually sits with specialist teams and paid data.
+                  BellWeather does it from free public data, in the browser, with every step open to
+                  inspection.
+                </p>
+              </article>
+            </div>
+          </>
+        )}
+
+        {slide(
+          2,
+          'The offering',
+          <>
+            <p className="guide-eyebrow">The offering</p>
+            <h2>Pick an area on the map. Get a price you can defend.</h2>
+            <div className="guide-grid4">
+              {[
+                ['01', 'Built on evidence', 'Daily temperatures since 1991, adjusted for the warming trend so every past year counts as today’s climate.', 'var(--g-cold)'],
+                ['02', 'Priced like an insurer', 'A premium set to a target profit margin, with the 1-in-200 year payout insurers must hold reserves against.', 'var(--g-ink)'],
+                ['03', 'From one policy to a city', 'Population data turns a single price into a full book: premiums taken in, payouts and reserves needed.', 'var(--g-ink)'],
+                ['04', 'Tested against 2050', 'Climate model projections show whether the product still works, and what it costs, in a warmer world.', 'var(--g-heat)'],
+              ].map(([num, title, body, accent]) => (
+                <article key={num} className="guide-card" style={{ ['--g-accent' as string]: accent }}>
+                  <div className="guide-num">{num}</div>
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                </article>
+              ))}
+            </div>
+            <div className="guide-footnote">
+              <span>Every assumption editable</span>
+              <span>Every figure recalculates instantly</span>
+              <span>Every source public</span>
+              <span>No sign up</span>
+            </div>
+          </>
+        )}
+
+        {slide(
+          3,
+          'How to navigate it',
+          <>
+            <p className="guide-eyebrow">How to navigate it</p>
+            <h2>Three moves. The rest is optional depth.</h2>
+            <div className="guide-nav-layout">
+              <Mock />
+              <div>
+                <ol className="guide-steps">
+                  <li>
+                    <span className="guide-n">1</span>
+                    <div>
+                      <h3>Choose an area</h3>
+                      <p>Search a city or draw a box on the map. It opens on Greater London.</p>
+                    </div>
+                  </li>
+                  <li>
+                    <span className="guide-n">2</span>
+                    <div>
+                      <h3>Read the headline bar</h3>
+                      <p>
+                        The price for one policy and the figures for the whole book stay pinned at the
+                        top wherever you scroll.
+                      </p>
+                    </div>
+                  </li>
+                  <li>
+                    <span className="guide-n">3</span>
+                    <div>
+                      <h3>Work through the tabs</h3>
+                      <dl className="guide-tabs-list">
+                        {TABS.map(([name, what]) => (
+                          <React.Fragment key={name}>
+                            <dt>{name}</dt>
+                            <dd>{what}</dd>
+                          </React.Fragment>
+                        ))}
+                      </dl>
+                    </div>
+                  </li>
+                </ol>
+                <p className="guide-tip">
+                  <strong>Short on time?</strong> Read 02 Price and 06 Outlook. Method, top right,
+                  sets out every source and formula.
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+
+        {slide(
+          4,
+          'Start',
+          <>
+            <p className="guide-eyebrow">Try it</p>
+            <h2>See it price a city.</h2>
+            <p className="guide-lede">
+              Pick a place you know and watch the price build.
+            </p>
+            <button className="guide-cta" onClick={onClose}>
+              Open {TOOL_NAME}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </button>
+            <div className="guide-notes">
+              <span>Best on a laptop or desktop</span>
+              <span>Free and no sign up</span>
+              <span>This guide is always under the ? in the top right</span>
+            </div>
+            <p className="guide-sign">
+              Built by <strong>{CREATOR}</strong>
+            </p>
+          </>,
+          'guide-launch'
+        )}
+      </main>
+
+      <button
+        className="guide-arrow"
+        data-dir="prev"
+        onClick={() => setPage(p => Math.max(0, p - 1))}
+        disabled={page === 0}
+        aria-label="Previous page"
+      >
+        <ArrowLeft className="size-5" />
+      </button>
+      <button
+        className="guide-arrow"
+        data-dir="next"
+        onClick={() => (last ? onClose() : setPage(p => p + 1))}
+        disabled={last}
+        aria-label="Next page"
+      >
+        <ArrowRight className="size-5" />
+      </button>
+
+      <nav className="guide-progress" aria-label="Pages">
+        {PAGES.map((name, i) => (
+          <button
+            key={name}
+            onClick={() => setPage(i)}
+            aria-current={i === page ? 'true' : 'false'}
+            aria-label={`Page ${i + 1}: ${name}`}
+          />
+        ))}
+      </nav>
     </div>
   );
 };
 
 // Shown on every load by design: this is a specialist tool and most visitors
-// arrive without context, so the orientation is worth repeating.
+// arrive without context, so the orientation is worth repeating. The help
+// button in the top bar opens the same guide at any time.
 export const hasSeenTour = (): boolean => false;
 
 export const markTourSeen = (): void => {
   try {
     localStorage.setItem(STORAGE_KEY, '1');
   } catch {
-    /* private browsing: the tour shows again next visit */
+    /* private browsing: the guide shows again next visit */
   }
 };

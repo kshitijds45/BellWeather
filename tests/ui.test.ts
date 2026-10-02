@@ -20,6 +20,7 @@ import {
   ResultStrip,
 } from '../src/app/components/Sections';
 import { DEFAULTS, analyse } from '../src/app/services/RiskModel';
+import { Tour } from '../src/app/components/Tour';
 import { CURRENCIES } from '../src/app/services/Currency';
 
 let passed = 0;
@@ -404,6 +405,64 @@ check('The strip follows the peril being priced', () => {
   if (!both.includes('heat and cold')) return 'combined cover not named';
   if (!heat.includes('heat only')) return 'heat-only cover not named';
   return null;
+});
+
+// ---------------------------------------------------------------------------
+// The guide
+//
+// It is the first thing anyone sees and the only thing a recruiter may read,
+// so its five pages and the claims they make about the console have to stay in
+// step with the console itself.
+// ---------------------------------------------------------------------------
+
+const guide = renderToStaticMarkup(React.createElement(Tour, { open: true, onClose: () => {} }));
+const guideText = plain(guide);
+
+check('The guide opens with five pages', () => {
+  const pages = (guide.match(/class="guide-slide"/g) || []).length;
+  if (pages !== 5) return `rendered ${pages} pages`;
+  if (!guideText.includes('01 / 05')) return 'page counter missing';
+  return null;
+});
+
+check('The guide runs cover, opportunity, offering, navigation, start', () =>
+  inOrder(guideText, [
+    'Heatwave and cold wave insurance',
+    'The opportunity',
+    'The offering',
+    'How to navigate it',
+    'See it price a city',
+  ]));
+
+check('The guide closes rather than linking away', () => {
+  // The standalone deck pointed at a public URL. Inside the tool that button
+  // has to dismiss the guide, not navigate.
+  if (/href="https?:/.test(guide)) return 'the guide still carries an external link';
+  if (!guideText.includes('Open BellWeather')) return 'no way out of the last page';
+  return null;
+});
+
+check('The guide lists the panels in the order the console uses', () =>
+  inOrder(guideText, ['01 Product', '02 Price', '03 Portfolio', '04 Hazard', '05 Sensitivity', '06 Outlook']));
+
+check('The drawing of the console matches the console', () => {
+  // The mock claims a pinned bar with two scales on it. If the real strip ever
+  // stops carrying both, the drawing is a lie.
+  if (!guideText.includes('One policy')) return 'mock strip lost the per-policy figure';
+  if (!guideText.includes('The whole book')) return 'mock strip lost the book figures';
+  if (!guideText.includes('Pricing this area')) return 'mock map lost its caption';
+  return null;
+});
+
+check('The guide credits its author and says how to reopen it', () => {
+  if (!guideText.includes('Kshitij Divansh Saxena')) return 'author missing';
+  if (!guideText.toLowerCase().includes('top right')) return 'does not say where to find it again';
+  return null;
+});
+
+check('The guide renders nothing when closed', () => {
+  const shut = renderToStaticMarkup(React.createElement(Tour, { open: false, onClose: () => {} }));
+  return shut === '' ? null : 'rendered while closed';
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
