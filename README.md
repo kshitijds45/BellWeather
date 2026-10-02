@@ -4,11 +4,16 @@ Heatwave and cold wave insurance, priced from open climate data.
 
 **Live site:** https://kshitijds45.github.io/heat-ledger/
 
-Pick an area and BellWeather takes you through it in sequence: the product being sold, how often
-the trigger has fired since 1991, what it costs, how that reprices on 2050 climate, what a whole
-book looks like, and a sensitivity sweep to evidence any parameter choice. No API keys, no
-backend. Every figure comes from a public source, and every request is logged to the browser
-console so it can be checked.
+Pick an area and BellWeather prices it: the product being sold, what it costs per customer, what a
+whole book looks like, how often the trigger has actually fired since 1991, a sensitivity sweep to
+evidence any parameter choice, and how the price reprices on 2050 climate. No API keys, no backend.
+Every figure comes from a public source, and every request is logged to the browser console so it
+can be checked.
+
+The panels present results before evidence, the way a pricing paper does, so Hazard sits after the
+price it produces rather than before it. The headline figures are pinned under the section tabs and
+stay on screen wherever you are. The pricing chain below runs in computation order, which is not the
+same thing.
 
 ---
 
@@ -88,7 +93,7 @@ choices rather than findings.
 
 ## Validation
 
-115 automated checks in `tests/`, covering the counting rules, trend adjustment,
+122 automated checks in `tests/`, covering the counting rules, trend adjustment,
 distribution fitting, pricing identities, the projection path, the data layer
 (with a stubbed network) the chart axes, tooltips and slider ranges, and the wording of the policy terms.
 Includes a 400-case fuzz over random assumption sets

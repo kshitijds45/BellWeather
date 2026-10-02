@@ -22,12 +22,12 @@ const STEPS: Step[] = [
   },
   {
     title: 'How to use it',
-    lead: 'Select an area on the map, then work down the panels.',
+    lead: 'Select an area on the map, then work down the panels. The bar under the tabs carries the headline figures wherever you are.',
     items: [
       ['01 Product', 'Set the terms. How hot or cold it has to get, for how long and how much it pays.'],
-      ['02 Hazard', 'How often those terms would have paid out at that spot, every year since 1991.'],
-      ['03 Price', 'The premium to charge, the reserve it ties up and the return that reserve earns.'],
-      ['04 Portfolio', 'The same policy sold across a whole city, at the take-up rate you choose.'],
+      ['02 Price', 'The premium to charge, the reserve it ties up and the return that reserve earns.'],
+      ['03 Portfolio', 'The same policy sold across a whole city, at the take-up rate you choose.'],
+      ['04 Hazard', 'How often those terms would have paid out at that spot, every year since 1991. This is the evidence the price is built on.'],
       ['05 Sensitivity', 'One assumption moved across a range, so you can see what the price is most exposed to.'],
       [
         '06 Outlook',

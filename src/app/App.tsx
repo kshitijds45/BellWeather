@@ -11,6 +11,7 @@ import {
   PriceSection,
   OutlookSection,
   PortfolioSection,
+  ResultStrip,
   Peril,
 } from './components/Sections';
 import { SimulatorSection } from './components/Simulator';
@@ -37,11 +38,14 @@ const LONDON: { name: string; area: Bounds } = {
   area: { north: 51.69, south: 51.29, east: 0.33, west: -0.51 },
 };
 
+// Results lead, evidence follows. The order presents the answer the way a
+// pricing paper does rather than the order the model computes it in, which is
+// why Hazard sits after the price it produces.
 const SECTIONS = [
   { id: 'product', index: '01', label: 'Product' },
-  { id: 'hazard', index: '02', label: 'Hazard' },
-  { id: 'price', index: '03', label: 'Price' },
-  { id: 'portfolio', index: '04', label: 'Portfolio' },
+  { id: 'price', index: '02', label: 'Price' },
+  { id: 'portfolio', index: '03', label: 'Portfolio' },
+  { id: 'hazard', index: '04', label: 'Hazard' },
   { id: 'sensitivity', index: '05', label: 'Sensitivity' },
   { id: 'outlook', index: '06', label: 'Outlook' },
 ];
@@ -168,6 +172,27 @@ export default function App() {
   );
 
   // Which panel is in view. Position-based rather than an IntersectionObserver,
+  // The pinned header carries the tabs and the results, so its height is not a
+  // constant and anything that scrolls to a section has to clear it. Measuring
+  // it once and publishing it as a custom property keeps the scroll offset and
+  // the active-tab line honest when the strip wraps or changes state.
+  const headRef = useRef<HTMLDivElement | null>(null);
+  const headHeight = useRef(96);
+  useEffect(() => {
+    const head = headRef.current;
+    const pane = scrollRef.current;
+    if (!head || !pane) return;
+    const apply = () => {
+      const h = head.getBoundingClientRect().height;
+      headHeight.current = h;
+      pane.style.setProperty('--doc-head-h', `${Math.round(h)}px`);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(head);
+    return () => ro.disconnect();
+  }, [showMethod]);
+
   // because the final section is short and can never satisfy a rootMargin band,
   // so its tab would never light up. Reaching the bottom selects the last one.
   useEffect(() => {
@@ -179,7 +204,7 @@ export default function App() {
         setActive(SECTIONS[SECTIONS.length - 1].id);
         return;
       }
-      const line = root.getBoundingClientRect().top + 90;
+      const line = root.getBoundingClientRect().top + headHeight.current + 18;
       let current = SECTIONS[0].id;
       SECTIONS.forEach(sec => {
         const el = document.getElementById(sec.id);
@@ -295,6 +320,15 @@ export default function App() {
               )}
             </div>
 
+            {/* Nothing on the map says what a visitor is meant to do with it,
+                so the prompt sits directly under the controls it refers to and
+                changes once an area of their own is in play. */}
+            <div className="map-prompt">
+              {isCustomArea
+                ? 'Drag a new box to re-price, or clear it to go back to the search area.'
+                : 'Search any city, or draw a box to price an area of your own.'}
+            </div>
+
             <AreaMap
               area={area}
               fitToken={fitToken}
@@ -309,6 +343,9 @@ export default function App() {
                 background: 'linear-gradient(to top, rgba(20,24,27,0.95) 0%, rgba(20,24,27,0) 100%)',
               }}
             >
+              <p style={{ fontSize: 10, color: 'var(--signal)', letterSpacing: '0.11em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 3 }}>
+                Pricing this area
+              </p>
               <p className="text-xs font-medium truncate">{locationName}</p>
               <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2 }}>
                 Index {index.lat.toFixed(3)}, {index.lon.toFixed(3)} · {startYear}–{endYear}
@@ -324,17 +361,28 @@ export default function App() {
 
           {/* Analysis, scrolling normally beside it */}
           <div ref={scrollRef} className="content-pane">
-            <nav className="doc-nav" aria-label="Sections">
-              {SECTIONS.map(sec => (
-                <button
-                  key={sec.id}
-                  data-active={active === sec.id}
-                  onClick={() => goTo(sec.id)}
-                >
-                  {sec.index} {sec.label}
-                </button>
-              ))}
-            </nav>
+            <div className="doc-head" ref={headRef}>
+              <nav className="doc-nav" aria-label="Sections">
+                {SECTIONS.map(sec => (
+                  <button
+                    key={sec.id}
+                    data-active={active === sec.id}
+                    onClick={() => goTo(sec.id)}
+                  >
+                    {sec.index} {sec.label}
+                  </button>
+                ))}
+              </nav>
+              <ResultStrip
+                result={result}
+                peril={peril}
+                a={assumptions}
+                currency={currency}
+                policies={policies}
+                locationName={locationName}
+                loading={historyLoading}
+              />
+            </div>
 
             <section id="product" className="doc-section">
               <ProductSection
@@ -346,23 +394,19 @@ export default function App() {
                 onPerilChange={setPeril}
                 currency={currency}
                 onCurrencyChange={setCurrencyCode}
-                book={book}
-              />
-            </section>
-
-            <section id="hazard" className="doc-section">
-              <RiskSection
-                result={result}
-                loading={historyLoading}
-                error={historyError}
-                peril={peril}
-                startYear={startYear}
-                endYear={endYear}
               />
             </section>
 
             <section id="price" className="doc-section">
-              <PriceSection result={result} peril={peril} a={assumptions} currency={currency} />
+              <PriceSection
+                result={result}
+                peril={peril}
+                a={assumptions}
+                onChange={setAssumptions}
+                currency={currency}
+                book={book}
+                onGoToHazard={() => goTo('hazard')}
+              />
             </section>
 
             <section id="portfolio" className="doc-section">
@@ -374,9 +418,21 @@ export default function App() {
                 currency={currency}
                 population={population}
                 policies={policies}
+                book={book}
                 loading={popLoading}
                 error={popError}
                 onManualPopulation={n => { setPopulation(n); setPopError(null); }}
+              />
+            </section>
+
+            <section id="hazard" className="doc-section">
+              <RiskSection
+                result={result}
+                loading={historyLoading}
+                error={historyError}
+                peril={peril}
+                startYear={startYear}
+                endYear={endYear}
               />
             </section>
 

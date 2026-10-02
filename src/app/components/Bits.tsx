@@ -16,13 +16,20 @@ export const SectionHead: React.FC<{
   </header>
 );
 
-/** A compact readout. Values are sized to be scanned, not admired. */
+/**
+ * A compact readout. Values are sized to be scanned, not admired.
+ *
+ * One item per block may be marked `primary`, which prints it at roughly twice
+ * the size of the rest. A grid of equally weighted figures gives a reader
+ * nothing to land on, and in both of these panels there is a single number the
+ * whole panel exists to produce.
+ */
 export const Readout: React.FC<{
-  items: Array<{ label: string; value: string; note?: string; accent?: string }>;
+  items: Array<{ label: string; value: string; note?: string; accent?: string; primary?: boolean }>;
 }> = ({ items }) => (
   <div className="readout">
     {items.map(i => (
-      <div key={i.label}>
+      <div key={i.label} data-primary={i.primary ? '' : undefined}>
         <p className="readout-label" title={i.label}>{i.label}</p>
         <p className="readout-value" style={i.accent ? { color: i.accent } : undefined}>
           {i.value}

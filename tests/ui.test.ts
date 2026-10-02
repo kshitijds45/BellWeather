@@ -17,8 +17,9 @@ import {
   MIN_COLD_C,
   clampHeat,
   clampCold,
+  ResultStrip,
 } from '../src/app/components/Sections';
-import { DEFAULTS } from '../src/app/services/RiskModel';
+import { DEFAULTS, analyse } from '../src/app/services/RiskModel';
 import { CURRENCIES } from '../src/app/services/Currency';
 
 let passed = 0;
@@ -231,7 +232,6 @@ const product = (peril: 'heat' | 'cold' | 'both') =>
       onPerilChange: () => {},
       currency: GBP,
       onCurrencyChange: () => {},
-      book: 10000,
     })
   );
 
@@ -290,7 +290,6 @@ check('The sentence carries the chosen currency symbol', () => {
       onPerilChange: () => {},
       currency: inr,
       onCurrencyChange: () => {},
-      book: 10000,
     })
   );
   return plain(html).includes('Pay ₹') ? null : 'currency symbol not carried into the sentence';
@@ -307,6 +306,103 @@ check('Trigger limits sit outside the recorded extremes on Earth', () => {
   // 56.7C Furnace Creek 1913 and -89.2C Vostok 1983.
   if (MAX_HEAT_C < 56.7) return `heat cap ${MAX_HEAT_C} excludes the hottest reading on record`;
   if (MIN_COLD_C > -89.2) return `cold cap ${MIN_COLD_C} excludes the coldest reading on record`;
+  return null;
+});
+
+/**
+ * A small synthetic record so the strip can be rendered against a real
+ * analysis rather than a hand-built object that could drift from the model.
+ */
+const synthetic = (hotDays: boolean) => {
+  const dates: string[] = [];
+  const tmax: number[] = [];
+  const tmean: number[] = [];
+  for (let y = 2000; y <= 2024; y++) {
+    for (let d = 1; d <= 365; d++) {
+      const mm = String(Math.min(12, Math.ceil(d / 30.5))).padStart(2, '0');
+      const dd = String(((d - 1) % 28) + 1).padStart(2, '0');
+      dates.push(`${y}-${mm}-${dd}`);
+      // A fortnight of heat every July, nothing otherwise.
+      const hot = hotDays && d >= 190 && d < 204;
+      tmax.push(hot ? 31 : 14);
+      tmean.push(hot ? 24 : 9);
+    }
+  }
+  return { dates, tmax, tmean };
+};
+
+const FIXTURE = analyse(synthetic(true), DEFAULTS, 2000, 2024, 10000);
+const UNPRICEABLE = analyse(synthetic(false), DEFAULTS, 2000, 2024, 10000);
+
+// ---------------------------------------------------------------------------
+// Pinned results strip
+//
+// The headline figures have to be legible before anything is read and have to
+// survive every state the data can be in, because the strip is on screen even
+// when the panel that produced a figure is not.
+// ---------------------------------------------------------------------------
+
+const strip = (props: Record<string, unknown>) =>
+  renderToStaticMarkup(React.createElement(ResultStrip, props as never));
+
+const STRIP = {
+  result: FIXTURE,
+  peril: 'both' as const,
+  a: DEFAULTS,
+  currency: GBP,
+  policies: 89000,
+  locationName: 'Greater London',
+  loading: false,
+};
+
+check('The strip separates one policy from the whole book', () => {
+  // Four bare figures with a per-policy price beside a book-wide reserve is
+  // actively misleading, so each group has to say which scale it is on.
+  const text = plain(strip(STRIP)).toLowerCase();
+  return inOrder(text, ['one policy', 'the whole book', 'customers', 'premium', 'reserve']);
+});
+
+check('The strip names the area and the take-up its book figures assume', () => {
+  const text = plain(strip(STRIP)).toLowerCase();
+  if (!text.includes('greater london')) return 'area not named';
+  if (!text.includes('take-up')) return 'take-up rate not named';
+  if (!text.includes('1.0%')) return 'take-up rate not shown';
+  return null;
+});
+
+check('The strip counts the book it was given', () => {
+  const text = plain(strip(STRIP));
+  return text.includes('89,000') ? null : `customer count missing from ${text}`;
+});
+
+check('The strip says what it is waiting for rather than showing a blank', () => {
+  const waiting = plain(strip({ ...STRIP, result: null, policies: null, loading: true }));
+  if (!waiting.includes('Reading the temperature record')) return `loading state reads "${waiting}"`;
+  const idle = plain(strip({ ...STRIP, result: null, policies: null, loading: false }));
+  // The idle line doubles as the instruction, since the map is the only way on.
+  if (!idle.toLowerCase().includes('draw a box')) return `idle state reads "${idle}"`;
+  return null;
+});
+
+check('The strip never prints a figure it does not have', () => {
+  const html = plain(strip({ ...STRIP, result: UNPRICEABLE }));
+  if (html.includes('£0')) return 'printed a zero premium';
+  if (!html.includes('never fired')) return `unpriceable state reads "${html}"`;
+  return null;
+});
+
+check('The strip holds back book figures until a population is known', () => {
+  const html = plain(strip({ ...STRIP, policies: null }));
+  if (html.includes('£0')) return 'printed zero book figures';
+  if (!html.toLowerCase().includes('population')) return `no-population state reads "${html}"`;
+  return null;
+});
+
+check('The strip follows the peril being priced', () => {
+  const both = plain(strip(STRIP)).toLowerCase();
+  const heat = plain(strip({ ...STRIP, peril: 'heat' })).toLowerCase();
+  if (!both.includes('heat and cold')) return 'combined cover not named';
+  if (!heat.includes('heat only')) return 'heat-only cover not named';
   return null;
 });
 

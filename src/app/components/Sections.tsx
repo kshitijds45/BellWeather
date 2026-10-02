@@ -70,6 +70,79 @@ export const yearTicks = (start: number, end: number, step: number): number[] =>
   return out;
 };
 
+/**
+ * The headline figures, pinned under the section tabs.
+ *
+ * Without this the first number sits below the fold behind a panel of inputs,
+ * and it leaves the screen entirely once you are working in Sensitivity or
+ * Outlook. Pinning it means the answer is on screen before anything is read
+ * and stays there while the inputs that drive it are being moved.
+ */
+export const ResultStrip: React.FC<{
+  result: LocationResult | null;
+  peril: Peril;
+  a: Assumptions;
+  currency: Currency;
+  policies: number | null;
+  locationName: string;
+  loading: boolean;
+}> = ({ result, peril, a, currency, policies, locationName, loading }) => {
+  const sel = result ? pickPrice(result, peril) : null;
+  const n = policies ?? 0;
+
+  if (!sel || !sel.priceable) {
+    return (
+      <div className="result-strip" data-empty="">
+        <p className="rs-waiting">
+          {loading
+            ? 'Reading the temperature record'
+            : !result
+              ? 'Search a city or draw a box on the map to price an area'
+              : 'No price: this trigger never fired in the record'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="result-strip">
+      <div className="rs-group rs-group-main">
+        <span className="rs-eyebrow">One policy · {perilLabel[peril].toLowerCase()}</span>
+        <span className="rs-row">
+          <span className="rs-headline">{money(sel.premium, currency)}</span>
+          <span className="rs-unit">a year</span>
+        </span>
+      </div>
+
+      <div className="rs-group">
+        <span className="rs-eyebrow">
+          The whole book in {locationName} · {pct(a.adoption, a.adoption < 0.01 ? 2 : 1)} take-up
+        </span>
+        <span className="rs-row">
+          {n > 0 ? (
+            <>
+              <span className="rs-pair">
+                <span className="rs-fig">{count(n, currency)}</span>
+                <span className="rs-word">customers</span>
+              </span>
+              <span className="rs-pair">
+                <span className="rs-fig">{moneyShort(n * sel.premium, currency)}</span>
+                <span className="rs-word">premium</span>
+              </span>
+              <span className="rs-pair">
+                <span className="rs-fig">{moneyShort(n * sel.capital, currency)}</span>
+                <span className="rs-word">reserve</span>
+              </span>
+            </>
+          ) : (
+            <span className="rs-word">Waiting for a population estimate</span>
+          )}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 // ---------------------------------------------------------------------------
 // 01 Product
 // ---------------------------------------------------------------------------
@@ -83,10 +156,8 @@ export const ProductSection: React.FC<{
   onPerilChange: (p: Peril) => void;
   currency: Currency;
   onCurrencyChange: (code: string) => void;
-  book: number;
-}> = ({ a, onChange, onReset, isDefault, peril, onPerilChange, currency, onCurrencyChange, book }) => {
+}> = ({ a, onChange, onReset, isDefault, peril, onPerilChange, currency, onCurrencyChange }) => {
   const set = (patch: Partial<Assumptions>) => onChange({ ...a, ...patch });
-  const invalid = a.targetCombinedRatio - a.expenseRatio <= 0;
 
   const signed = (v: number) => String(v).replace('-', '−');
 
@@ -95,7 +166,7 @@ export const ProductSection: React.FC<{
       <SectionHead
         index="01 / Product"
         title="Set the policy"
-        standfirst="Set the rules of the policy here: how hot or cold it has to get, for how long, and how much it pays. The starting values come from official UK definitions. Everything below updates as you change them."
+        standfirst="The contract itself: how hot or cold it has to get, for how long and how much it pays. The starting values come from official UK definitions. Every figure in the panels below is rebuilt as you change these."
         aside={
           !isDefault && (
             <button onClick={onReset} className="btn-ghost">Reset</button>
@@ -276,64 +347,6 @@ export const ProductSection: React.FC<{
           </div>
         </PanelBlock>
 
-        <PanelBlock head="How the price is set">
-          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
-            <SliderField
-              label="Combined Ratio (Claims + Opex)"
-              value={Math.round(a.targetCombinedRatio * 100)}
-              onChange={v => set({ targetCombinedRatio: v / 100 })}
-              min={50}
-              max={110}
-              unit="%"
-            />
-            <SliderField
-              label="Opex"
-              value={Math.round(a.expenseRatio * 100)}
-              onChange={v => set({ expenseRatio: v / 100 })}
-              min={5}
-              max={60}
-              unit="%"
-              hint={invalid ? 'Opex is too high, nothing left for claims' : `Leaves ${pct(a.targetCombinedRatio - a.expenseRatio)} for claims`}
-            />
-            <div>
-              <SliderField
-                label="Opex saving each time customers double"
-                value={+(a.volumeDiscountPerDoubling * 100).toFixed(1)}
-                onChange={v => set({ volumeDiscountPerDoubling: Math.max(0, v) / 100 })}
-                min={0}
-                max={6}
-                step={0.5}
-                unit="pp"
-                hint={
-                  a.volumeDiscountPerDoubling > 0
-                    ? `Opex now ${pct(effectiveExpenseRatio(a, book), 1)}`
-                    : 'Off. Opex stays the same at any size.'
-                }
-              />
-              {a.volumeDiscountPerDoubling > 0 && (
-                <div className="mt-3.5">
-                  <NumberField
-                    label="Reference book size"
-                    value={a.referencePolicies}
-                    onChange={v => set({ referencePolicies: Math.max(1, Math.round(v)) })}
-                    step={1000}
-                    min={1}
-                  />
-                  <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4 }}>
-                    The number of customers at which the Opex above applies. Every doubling from here
-                    takes the saving off, every halving adds it back.
-                  </p>
-                </div>
-              )}
-            </div>
-            {invalid && (
-              <p className="text-xs" style={{ color: HEAT }}>
-                Running costs cannot be bigger than claims and costs combined, or there is nothing left to pay claims with.
-              </p>
-            )}
-          </div>
-        </PanelBlock>
-
       </div>
     </>
   );
@@ -379,7 +392,7 @@ export const RiskSection: React.FC<{
   return (
     <>
       <SectionHead
-        index="02 / Hazard"
+        index="04 / Hazard"
         title="How often it has happened"
         standfirst="How many times your trigger would have fired at this spot, every year since 1991. The adjusted column restates each past year at today's climate, because the early years were cooler and would otherwise make the risk look smaller than it is. Every price in this tool is built on the adjusted figure."
       />
@@ -456,19 +469,25 @@ export const RiskSection: React.FC<{
 };
 
 // ---------------------------------------------------------------------------
-// 03 Price
+// 02 Price
 // ---------------------------------------------------------------------------
 
 export const PriceSection: React.FC<{
   result: LocationResult | null;
   peril: Peril;
   a: Assumptions;
+  onChange: (a: Assumptions) => void;
   currency: Currency;
-}> = ({ result, peril, a, currency }) => {
+  book: number;
+  onGoToHazard: () => void;
+}> = ({ result, peril, a, onChange, currency, book, onGoToHazard }) => {
+  const set = (patch: Partial<Assumptions>) => onChange({ ...a, ...patch });
+  const invalid = a.targetCombinedRatio - a.expenseRatio <= 0;
+
   if (!result) {
     return (
       <>
-        <SectionHead index="03 / Price" title="What to charge" />
+        <SectionHead index="02 / Price" title="What to charge" />
         <div className="section-body"><Empty>Waiting for the temperature record.</Empty></div>
       </>
     );
@@ -479,6 +498,17 @@ export const PriceSection: React.FC<{
   const showBoth = peril === 'both';
   const sel = pickPrice(result, peril);
   const separateTail = result.heat.price.tailPayout + result.cold.price.tailPayout;
+
+  // Cover that runs both ways can carry two different payouts, so the plain
+  // reading has to name both rather than pretend there is one figure.
+  const payoutPhrase =
+    peril === 'heat'
+      ? `${money(a.heatPayout, currency, 0)} every time a heatwave is triggered`
+      : peril === 'cold'
+        ? `${money(a.coldPayout, currency, 0)} every time a cold spell is triggered`
+        : a.heatPayout === a.coldPayout
+          ? `${money(a.heatPayout, currency, 0)} every time either trigger is met`
+          : `${money(a.heatPayout, currency, 0)} per heatwave and ${money(a.coldPayout, currency, 0)} per cold spell`;
 
   const rows: Array<{ label: string; pick: (p: Price) => string; strong?: boolean }> = [
     { label: 'Payouts a year, adjusted', pick: p => p.eventsPerYear.toFixed(2) },
@@ -498,21 +528,56 @@ export const PriceSection: React.FC<{
   return (
     <>
       <SectionHead
-        index="03 / Price"
+        index="02 / Price"
         title="What to charge"
         standfirst={`The yearly price per customer. It is set so that ${pct(a.targetCombinedRatio)} of the premium goes on claims and running costs, leaving the rest as profit. The reserve is the spare money an insurer must hold back for a very bad year.`}
       />
 
       <div className="section-body space-y-3">
-        <Readout
-          items={[
-            { label: 'Yearly price', value: sel.priceable ? money(sel.premium, currency) : '—', note: perilLabel[peril] },
-            { label: 'Share spent on claims', value: sel.priceable ? pct(sel.lossRatio) : '—', note: 'UK car insurance: 54%. Home: 46%' },
-            { label: 'Payout in a 1-in-200 year', value: sel.priceable ? money(sel.tailPayout, currency, 0) : '—' },
-            { label: 'Money held in reserve', value: sel.priceable ? money(sel.capital, currency, 0) : '—' },
-            { label: 'Return on that reserve', value: sel.priceable ? pct(sel.returnOnCapital) : '—' },
-          ]}
-        />
+        {sel.priceable && (
+          <p className="plain-read">
+            {money(sel.premium, currency)} a year buys {payoutPhrase}. The price is built on{' '}
+            <button type="button" className="jump" onClick={onGoToHazard}>
+              {sel.eventsPerYear.toFixed(2)} payouts a year
+            </button>{' '}
+            adjusted for warming. Of the premium, {money(sel.expectedPayout, currency)} goes on claims,{' '}
+            {money(sel.expenses, currency)} on running costs and {money(sel.margin, currency)} is profit.
+          </p>
+        )}
+
+        <PanelBlock head="How the price is set">
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 items-start">
+            <SliderField
+              label="Combined Ratio (Claims + Opex)"
+              value={Math.round(a.targetCombinedRatio * 100)}
+              onChange={v => set({ targetCombinedRatio: v / 100 })}
+              min={50}
+              max={110}
+              unit="%"
+              hint="The share of the premium that is not profit"
+            />
+            <SliderField
+              label="Opex"
+              value={Math.round(a.expenseRatio * 100)}
+              onChange={v => set({ expenseRatio: v / 100 })}
+              min={5}
+              max={60}
+              unit="%"
+              hint={
+                invalid
+                  ? 'Opex is too high, nothing left for claims'
+                  : `Leaves ${pct(a.targetCombinedRatio - a.expenseRatio)} for claims${
+                      a.volumeDiscountPerDoubling > 0 ? `. Volume saving puts it at ${pct(effectiveExpenseRatio(a, book), 1)}` : ''
+                    }`
+              }
+            />
+          </div>
+          {invalid && (
+            <p className="text-xs mt-3" style={{ color: HEAT }}>
+              Running costs cannot be bigger than claims and costs combined, or there is nothing left to pay claims with.
+            </p>
+          )}
+        </PanelBlock>
 
         <div className="panel overflow-x-auto">
           <table className="data-table">
@@ -867,7 +932,7 @@ export const OutlookSection: React.FC<{
 };
 
 // ---------------------------------------------------------------------------
-// 05 Portfolio
+// 03 Portfolio
 // ---------------------------------------------------------------------------
 
 export const PortfolioSection: React.FC<{
@@ -878,10 +943,12 @@ export const PortfolioSection: React.FC<{
   currency: Currency;
   population: number | null;
   policies: number | null;
+  book: number;
   loading: boolean;
   error: string | null;
   onManualPopulation: (n: number) => void;
-}> = ({ result, peril, a, onChange, currency, population, policies, loading, error, onManualPopulation }) => {
+}> = ({ result, peril, a, onChange, currency, population, policies, book, loading, error, onManualPopulation }) => {
+  const set = (patch: Partial<Assumptions>) => onChange({ ...a, ...patch });
   const [manual, setManual] = React.useState('');
   const sel = result ? pickPrice(result, peril) : null;
   const n = policies ?? 0;
@@ -889,7 +956,7 @@ export const PortfolioSection: React.FC<{
   return (
     <>
       <SectionHead
-        index="04 / Portfolio"
+        index="03 / Portfolio"
         title="Selling it at scale"
         standfirst="What it looks like if you sell this across a whole city. Because every customer is covered by the same thermometer reading, they all get paid on the same day. That is why the worst-year figure is simply one customer multiplied by all of them."
       />
@@ -923,28 +990,71 @@ export const PortfolioSection: React.FC<{
 
         {!loading && population !== null && sel && (
           <>
-            <div className="panel panel-pad mb-3" style={{ maxWidth: 420 }}>
-              <SliderField
-                label="Adoption percentage"
-                value={+(a.adoption * 100).toFixed(2)}
-                onChange={v => onChange({ ...a, adoption: Math.max(0, v) / 100 })}
-                min={0.05}
-                max={100}
-                step={0.05}
-                unit="%"
-                hint={`${count(policies ?? 0, currency)} customers out of ${count(population, currency)} people`}
-              />
-            </div>
+            <PanelBlock head="Size of the book">
+              <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 items-start">
+                <SliderField
+                  label="Adoption percentage"
+                  value={+(a.adoption * 100).toFixed(2)}
+                  onChange={v => set({ adoption: Math.max(0, v) / 100 })}
+                  min={0.05}
+                  max={100}
+                  step={0.05}
+                  unit="%"
+                  hint={`${count(policies ?? 0, currency)} customers out of ${count(population, currency)} people`}
+                />
+                <div>
+                  <SliderField
+                    label="Opex saving each time customers double"
+                    value={+(a.volumeDiscountPerDoubling * 100).toFixed(1)}
+                    onChange={v => set({ volumeDiscountPerDoubling: Math.max(0, v) / 100 })}
+                    min={0}
+                    max={6}
+                    step={0.5}
+                    unit="pp"
+                    hint={
+                      a.volumeDiscountPerDoubling > 0
+                        ? `Opex now ${pct(effectiveExpenseRatio(a, book), 1)}, down from ${pct(a.expenseRatio)}`
+                        : 'Off. Opex stays the same at any size.'
+                    }
+                  />
+                  {a.volumeDiscountPerDoubling > 0 && (
+                    <div className="mt-3.5">
+                      <NumberField
+                        label="Reference book size"
+                        value={a.referencePolicies}
+                        onChange={v => set({ referencePolicies: Math.max(1, Math.round(v)) })}
+                        step={1000}
+                        min={1}
+                      />
+                      <p style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 4 }}>
+                        The number of customers at which the Opex set in Price applies. Every doubling
+                        from here takes the saving off, every halving adds it back.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </PanelBlock>
+
             <Readout
               items={[
-                { label: `People living here, ${POPULATION_YEAR}`, value: count(population, currency) },
-                { label: 'Customers', value: count(n, currency), note: `${pct(a.adoption, a.adoption < 0.01 ? 2 : 1)} adoption` },
-                { label: 'Money taken in', value: sel.priceable ? moneyShort(n * sel.premium, currency) : '—' },
+                { label: 'Money taken in', value: sel.priceable ? moneyShort(n * sel.premium, currency) : '—', note: `${count(n, currency)} customers`, primary: true },
+                { label: `People living here, ${POPULATION_YEAR}`, value: count(population, currency), note: `${pct(a.adoption, a.adoption < 0.01 ? 2 : 1)} adoption` },
                 { label: 'Paid out in a normal year', value: moneyShort(n * sel.expectedPayout, currency) },
                 { label: 'Paid out in a 1-in-200 year', value: moneyShort(n * sel.tailPayout, currency), accent: HEAT },
                 { label: 'Money held in reserve', value: moneyShort(n * sel.capital, currency) },
               ]}
             />
+
+            {sel.priceable && (
+              <p className="plain-read">
+                At {pct(a.adoption, a.adoption < 0.01 ? 2 : 1)} adoption that is {count(n, currency)}{' '}
+                customers paying {moneyShort(n * sel.premium, currency)} a year. A normal year costs{' '}
+                {moneyShort(n * sel.expectedPayout, currency)} in claims. The worst year in two hundred
+                costs {moneyShort(n * sel.tailPayout, currency)}, which is why{' '}
+                {moneyShort(n * sel.capital, currency)} has to sit in reserve against it.
+              </p>
+            )}
             <Note>The weather data covers squares roughly 9 to 25 km across, so one reading stands for the whole area. Spreading risk means selling in cities whose weather does not move together, not selling more in one city.</Note>
           </>
         )}

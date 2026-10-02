@@ -117,81 +117,20 @@ export const Method: React.FC = () => (
           <Table
             head={['Control', 'What it does']}
             rows={[
-              ['Amount paid each time', 'The sum in the policy sentence. Set separately for heat and cold, so the two perils can carry different sums. Scales the money figures without changing any of the percentages'],
-              ['Most payouts in one year', 'Caps how many times one customer can be paid in a year. This is what limits the insurer\'s worst case'],
-              ['Adoption percentage', 'Set in the Portfolio panel. Turns the local population into a customer count, which drives the city-wide totals and, if the volume saving is on, the price too'],
-              ['Combined Ratio (Claims + Opex)', 'The target the price is solved to hit. Anything under 100% means the insurer makes money on the underwriting'],
-              ['Opex', 'How much of each premium is eaten by selling and administering the policy'],
-              ['Opex volume saving', 'How much cheaper Opex gets each time the customer base doubles. Cannot go below zero'],
-              ['Reference book size', 'The customer count at which the Opex figure above is true. The anchor for the volume saving'],
+              ['Amount paid each time, Product', 'The sum in the policy sentence. Set separately for heat and cold, so the two perils can carry different sums. Scales the money figures without changing any of the percentages'],
+              ['Most payouts in one year, Product', 'Caps how many times one customer can be paid in a year. This is what limits the insurer\'s worst case'],
+              ['Combined Ratio, Price', 'The target the price is solved to hit. Anything under 100% means the insurer makes money on the underwriting'],
+              ['Opex, Price', 'How much of each premium is eaten by selling and administering the policy'],
+              ['Adoption percentage, Portfolio', 'Turns the local population into a customer count, which drives the city-wide totals and, if the volume saving is on, the price too'],
+              ['Opex volume saving, Portfolio', 'How much cheaper Opex gets each time the customer base doubles. Cannot go below zero'],
+              ['Reference book size, Portfolio', 'The customer count at which the Opex set in Price is true. The anchor for the volume saving'],
             ]}
           />
         </Sub>
       </Group>
 
       {/* ---------------------------------------------------------------- */}
-      <Group index="02 / Hazard" title="How often it actually happens">
-        <Sub title="Where the weather comes from">
-          <P>
-            Daily high and average temperature from the Open-Meteo Historical Weather API, which serves
-            European Centre for Medium-Range Weather Forecasts reanalysis. Reanalysis means a
-            reconstruction of past weather that blends real measurements with a weather model to fill
-            the gaps, giving complete coverage everywhere rather than only where there happened to be a
-            thermometer. It covers squares roughly 9 to 25 km across.
-          </P>
-          <P>
-            The record runs {HISTORY_START} to {historyEnd()}. It starts in {HISTORY_START} because
-            that matches the thirty year baseline the Met Office currently uses, and stops at the last
-            full year because the archive runs a few days behind real time. The temperature is read at
-            a single point, the centre of the area you choose.
-          </P>
-        </Sub>
-
-        <Sub title="Correcting for a warming climate">
-          <P>
-            Simply averaging {YEARS} years would understate heat risk and overstate cold risk, because
-            the early years in the record were cooler than today. Left uncorrected, an old record makes
-            the future look safer than it is. Stripping out that warming trend before pricing is
-            standard practice for weather contracts.
-          </P>
-          <F>
-            Work out the average summer high, or average winter temperature, for each year.
-            <br />
-            Draw a straight line of best fit through those yearly averages.
-            <br />
-            Nudge every day in every year up or down by the gap between that year's point on the line
-            and the final year's.
-            <br />
-            Count the events again on the corrected record.
-          </F>
-          <P>
-            Summer and winter are corrected separately, because they are not warming at the same rate.
-            The panel shows both numbers: what actually happened, and what the same weather would look
-            like in today's climate. Every price in this tool, on every panel, is built on the second
-            one. The as-it-happened column is shown for comparison only and is never used to calculate
-            anything.
-          </P>
-        </Sub>
-
-        <Sub title="Working out the odds of a very bad year">
-          <P>
-            {YEARS} years of records cannot show you a once-in-two-centuries year, because one probably
-            has not happened yet. So the yearly counts are used to fit a standard statistical curve,
-            and the rare end of that curve is read off instead.
-          </P>
-          <P>
-            Which curve depends on the pattern. If the year to year variation is about what you would
-            expect from random chance, a Poisson distribution is used, which is the textbook model for
-            counting rare events. If the variation is noticeably larger, a negative binomial is used
-            instead. That second case is common for heat, because the weather that produces one
-            heatwave tends to produce several in the same summer, and the negative binomial allows for
-            that clustering by making very bad years more likely than pure chance would suggest.
-          </P>
-        </Sub>
-      </Group>
-
-      {/* ---------------------------------------------------------------- */}
-      <Group index="03 / Price" title="Turning that into a price">
+      <Group index="02 / Price" title="Turning that into a price">
         <Sub title="The calculation">
           <P>
             Insurers describe pricing with two percentages. The loss ratio is the share of each premium
@@ -296,7 +235,7 @@ export const Method: React.FC = () => (
       </Group>
 
       {/* ---------------------------------------------------------------- */}
-      <Group index="04 / Portfolio" title="Selling it across a city">
+      <Group index="03 / Portfolio" title="Selling it across a city">
         <P>
           The population inside the area you draw comes from WorldPop, a {POPULATION_YEAR} estimate
           mapped onto 100 m squares. If that service does not respond, you can type a figure in
@@ -317,6 +256,67 @@ export const Method: React.FC = () => (
           separate risks. They are one risk, repeated a hundred thousand times. The only real way to
           spread it is to sell in places whose weather does not move together.
         </P>
+      </Group>
+
+      {/* ---------------------------------------------------------------- */}
+      <Group index="04 / Hazard" title="How often it actually happens">
+        <Sub title="Where the weather comes from">
+          <P>
+            Daily high and average temperature from the Open-Meteo Historical Weather API, which serves
+            European Centre for Medium-Range Weather Forecasts reanalysis. Reanalysis means a
+            reconstruction of past weather that blends real measurements with a weather model to fill
+            the gaps, giving complete coverage everywhere rather than only where there happened to be a
+            thermometer. It covers squares roughly 9 to 25 km across.
+          </P>
+          <P>
+            The record runs {HISTORY_START} to {historyEnd()}. It starts in {HISTORY_START} because
+            that matches the thirty year baseline the Met Office currently uses, and stops at the last
+            full year because the archive runs a few days behind real time. The temperature is read at
+            a single point, the centre of the area you choose.
+          </P>
+        </Sub>
+
+        <Sub title="Correcting for a warming climate">
+          <P>
+            Simply averaging {YEARS} years would understate heat risk and overstate cold risk, because
+            the early years in the record were cooler than today. Left uncorrected, an old record makes
+            the future look safer than it is. Stripping out that warming trend before pricing is
+            standard practice for weather contracts.
+          </P>
+          <F>
+            Work out the average summer high, or average winter temperature, for each year.
+            <br />
+            Draw a straight line of best fit through those yearly averages.
+            <br />
+            Nudge every day in every year up or down by the gap between that year's point on the line
+            and the final year's.
+            <br />
+            Count the events again on the corrected record.
+          </F>
+          <P>
+            Summer and winter are corrected separately, because they are not warming at the same rate.
+            The panel shows both numbers: what actually happened, and what the same weather would look
+            like in today's climate. Every price in this tool, on every panel, is built on the second
+            one. The as-it-happened column is shown for comparison only and is never used to calculate
+            anything.
+          </P>
+        </Sub>
+
+        <Sub title="Working out the odds of a very bad year">
+          <P>
+            {YEARS} years of records cannot show you a once-in-two-centuries year, because one probably
+            has not happened yet. So the yearly counts are used to fit a standard statistical curve,
+            and the rare end of that curve is read off instead.
+          </P>
+          <P>
+            Which curve depends on the pattern. If the year to year variation is about what you would
+            expect from random chance, a Poisson distribution is used, which is the textbook model for
+            counting rare events. If the variation is noticeably larger, a negative binomial is used
+            instead. That second case is common for heat, because the weather that produces one
+            heatwave tends to produce several in the same summer, and the negative binomial allows for
+            that clustering by making very bad years more likely than pure chance would suggest.
+          </P>
+        </Sub>
       </Group>
 
       {/* ---------------------------------------------------------------- */}
