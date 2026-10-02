@@ -85,6 +85,14 @@ export const fetchHistory = async (
     end_date: `${historyEnd()}-12-31`,
     daily: 'temperature_2m_max,temperature_2m_mean',
     timezone: 'auto',
+    // Pinned deliberately. Left to itself the archive serves "best match",
+    // which stitches IFS HRES, ERA5 and ERA5-Land together across the record.
+    // That is fine for looking up a day and wrong for fitting a thirty five
+    // year warming trend, because part of the measured trend would be the
+    // underlying dataset changing rather than the climate. ERA5 alone is
+    // homogeneous from 1940 and covers sea as well as land, which the coarser
+    // grid is the price of.
+    models: 'era5',
   });
   const url = `${ARCHIVE_API}?${params}`;
   console.info('Historical record request:', url);

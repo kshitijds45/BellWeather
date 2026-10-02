@@ -311,7 +311,7 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
                       <div>
                         <h3>Read the headline bar</h3>
                         <p>
-                          The price for one policy and the figures for the whole book stay pinned at
+                          The premium for one policy and the figures for the whole book stay pinned at
                           the top wherever you scroll.
                         </p>
                       </div>

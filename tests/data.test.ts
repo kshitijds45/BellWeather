@@ -27,6 +27,10 @@ const run = async () => {
   ck('History starts at the stated first year', u.searchParams.get('start_date') === `${HISTORY_START}-01-01`);
   ck('History ends at the last complete year', u.searchParams.get('end_date') === `${historyEnd()}-12-31`);
   ck('History uses local time so days are bucketed correctly', u.searchParams.get('timezone') === 'auto');
+  // Left unpinned the archive splices several models across the record, which
+  // would put part of the dataset's own discontinuity into the warming trend.
+  ck('History pins one reanalysis so the trend is not a dataset artefact',
+    u.searchParams.get('models') === 'era5', `models=${u.searchParams.get('models')}`);
   ck('History parses into aligned arrays', h.dates.length===2 && h.tmax.length===2 && h.tmean.length===2);
 
   console.log('\n--- L. Error handling ---');

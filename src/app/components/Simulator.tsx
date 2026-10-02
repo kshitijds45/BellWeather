@@ -129,7 +129,7 @@ export const SimulatorSection: React.FC<{
       spec.label,
       'Payouts a year, adjusted',
       'Payout in a normal year',
-      'Yearly price',
+      'Premium a year',
       'Claims share',
       'Payout in a 1-in-200 year',
       'Return on reserve',
@@ -214,7 +214,7 @@ export const SimulatorSection: React.FC<{
                   <th>{spec.label}</th>
                   <th>Payouts a year, adjusted</th>
                   <th>Payout, normal year</th>
-                  <th>Yearly price</th>
+                  <th>Premium a year</th>
                   <th>Claims share</th>
                   <th>1-in-200</th>
                   <th>Return on reserve</th>

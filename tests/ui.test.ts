@@ -435,6 +435,14 @@ const STRIP = {
   loading: false,
 };
 
+check('The per-policy figure is named as a premium', () => {
+  // "Price" is what the panel does; "premium" is what the figure is. Using the
+  // trade's word for the per-policy number is what stops it reading as a fee.
+  const text = plain(strip(STRIP)).toLowerCase();
+  if (!text.includes('premium a year')) return 'the per-policy figure is not called a premium';
+  return null;
+});
+
 check('The strip separates one policy from the whole book', () => {
   // Four bare figures with a per-policy price beside a book-wide reserve is
   // actively misleading, so each group has to say which scale it is on.

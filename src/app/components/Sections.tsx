@@ -108,7 +108,7 @@ export const ResultStrip: React.FC<{
         <span className="rs-eyebrow">One policy · {perilLabel[peril].toLowerCase()}</span>
         <span className="rs-row">
           <span className="rs-headline">{money(sel.premium, currency)}</span>
-          <span className="rs-unit">a year</span>
+          <span className="rs-unit">premium a year</span>
         </span>
       </div>
 
@@ -553,7 +553,7 @@ export const PriceSection: React.FC<{
     { label: 'Paid out in a normal year', pick: p => money(p.expectedPayout, currency) },
     { label: 'Running costs', pick: p => money(p.expenses, currency) },
     { label: 'Profit', pick: p => money(p.margin, currency) },
-    { label: 'Yearly price', pick: p => money(p.premium, currency), strong: true },
+    { label: 'Premium a year', pick: p => money(p.premium, currency), strong: true },
     { label: 'Share spent on claims', pick: p => pct(p.lossRatio) },
     { label: 'Share spent on costs', pick: p => pct(p.expenseRatio) },
     { label: 'Payout in a 1-in-200 year', pick: p => money(p.tailPayout, currency, 0) },
@@ -568,13 +568,13 @@ export const PriceSection: React.FC<{
       <SectionHead
         index="02 / Price"
         title="What to charge"
-        standfirst={`The yearly price per customer. It is set so that ${pct(a.targetCombinedRatio)} of the premium goes on claims and running costs, leaving the rest as profit. The reserve is the spare money an insurer must hold back for a very bad year.`}
+        standfirst={`The premium one customer pays each year. It is solved so that ${pct(a.targetCombinedRatio)} of it goes on claims and running costs, leaving the rest as profit. The reserve is the spare money an insurer must hold back for a very bad year.`}
       />
 
       <div className="section-body space-y-3">
         {sel.priceable && (
           <p className="plain-read">
-            {money(sel.premium, currency)} a year buys {payoutPhrase}. The price is built on{' '}
+            A premium of {money(sel.premium, currency)} a year buys {payoutPhrase}. It is built on{' '}
             <button type="button" className="jump" onClick={onGoToHazard}>
               {sel.eventsPerYear.toFixed(2)} payouts a year
             </button>{' '}
@@ -583,7 +583,7 @@ export const PriceSection: React.FC<{
           </p>
         )}
 
-        <PanelBlock head="How the price is set">
+        <PanelBlock head="How the premium is set">
           <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 items-start">
             <SliderField
               label="Combined Ratio (Claims + Opex)"
@@ -851,10 +851,10 @@ export const OutlookSection: React.FC<{
           <>
             <Readout
               items={[
-                { label: 'Price today', value: now?.priceable ? money(now.premium, currency) : '—' },
-                { label: `Price in ${FUTURE.start}`, value: pathAt(FUTURE.start) },
-                { label: 'Price in 2040', value: pathAt(2040) },
-                { label: `Price in ${FUTURE.end}`, value: pathAt(FUTURE.end), accent: HEAT },
+                { label: 'Premium today', value: now?.priceable ? money(now.premium, currency) : '—' },
+                { label: `Premium in ${FUTURE.start}`, value: pathAt(FUTURE.start) },
+                { label: 'Premium in 2040', value: pathAt(2040) },
+                { label: `Premium in ${FUTURE.end}`, value: pathAt(FUTURE.end), accent: HEAT },
                 {
                   label: `Change by ${FUTURE.end}`,
                   value: endChange != null ? `${endChange >= 0 ? '+' : ''}${(endChange * 100).toFixed(0)}%` : '—',
@@ -864,7 +864,7 @@ export const OutlookSection: React.FC<{
             />
 
             <div className="panel">
-              <div className="panel-head">Yearly price across the projection window</div>
+              <div className="panel-head">Premium per policy across the projection window</div>
               <div className="p-3.5">
                 <div className="h-56 -ml-1">
                   <ResponsiveContainer width="100%" height="100%">
@@ -941,8 +941,8 @@ export const OutlookSection: React.FC<{
                   <tr>
                     <th>Peril</th>
                     <th>Change in how often</th>
-                    <th>Price today</th>
-                    <th>Price in {FUTURE.end}</th>
+                    <th>Premium today</th>
+                    <th>Premium in {FUTURE.end}</th>
                   </tr>
                 </thead>
                 <tbody>

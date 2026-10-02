@@ -299,11 +299,19 @@ export const Method: React.FC = () => (
       <Group index="04 / Hazard" title="How often it actually happens">
         <Sub title="Where the weather comes from">
           <P>
-            Daily high and average temperature from the Open-Meteo Historical Weather API, which serves
-            European Centre for Medium-Range Weather Forecasts reanalysis. Reanalysis means a
+            Daily high and average temperature from the Open-Meteo Historical Weather API, pinned to
+            ERA5, the European Centre for Medium-Range Weather Forecasts reanalysis. Reanalysis means a
             reconstruction of past weather that blends real measurements with a weather model to fill
             the gaps, giving complete coverage everywhere rather than only where there happened to be a
-            thermometer. It covers squares roughly 9 to 25 km across.
+            thermometer. ERA5 covers squares roughly 25 km across.
+          </P>
+          <P>
+            The pin matters. Left to choose, the archive stitches several models together across the
+            record, which is fine for looking up a single day and wrong here: this tool fits a thirty
+            five year warming trend, and part of that trend would be the underlying dataset changing
+            rather than the climate. One homogeneous series from 1940 is worth more than a sharper but
+            spliced one. The cost is resolution, and that cost is why the heat trigger is not derived
+            from this data.
           </P>
           <P>
             The record runs {HISTORY_START} to {historyEnd()}. It starts in {HISTORY_START} because

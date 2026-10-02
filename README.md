@@ -32,7 +32,10 @@ Both default triggers are official UK definitions:
 
 ## The pricing chain
 
-1. **Event history.** Daily temperature at the area's centre, 1991 to the last complete year.
+1. **Event history.** Daily temperature at the area's centre, 1991 to the last complete year, from
+   ERA5 reanalysis. The request pins the model: left unpinned the archive splices several reanalyses
+   together across the record, and part of the fitted warming trend would then be the dataset
+   changing rather than the climate.
    The heat trigger defaults to the published Greater London threshold rather than being derived.
    The Met Office rule, the 90th percentile of the daily maximum climatology at the summer mid
    point, is published in outline but not closely enough to reproduce, and it is computed on 1 km
@@ -100,7 +103,7 @@ choices rather than findings.
 
 ## Validation
 
-151 automated checks in `tests/`, covering the counting rules, trend adjustment,
+153 automated checks in `tests/`, covering the counting rules, trend adjustment,
 distribution fitting, pricing identities, the projection path, the data layer
 (with a stubbed network) the chart axes, tooltips and slider ranges, and the wording of the policy terms.
 Includes a 400-case fuzz over random assumption sets
