@@ -240,6 +240,10 @@ const product = (peril: 'heat' | 'cold' | 'both') =>
 
 const plain = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
 
+/** Some layout rules cannot be seen in the markup, so they are read from the
+ *  stylesheet instead. Run from the repository root. */
+const readCss = () => require('fs').readFileSync('src/styles/app-theme.css', 'utf8') as string;
+
 const inOrder = (text: string, parts: string[]) => {
   let at = 0;
   for (const p of parts) {
@@ -376,10 +380,44 @@ check('A range input is told to fill its row', () => {
   // The labels under it then pointed at nothing, and a value at the maximum
   // parked the thumb mid-row, which is a counting bug dressed as a cosmetic
   // one. Read from the stylesheet so the rule cannot be dropped silently.
-  const css = require('fs').readFileSync('src/styles/app-theme.css', 'utf8') as string;
+  const css = readCss();
   const block = css.match(/input\[type='range'\]\s*\{[^}]*\}/);
   if (!block) return 'no rule for range inputs at all';
   if (!/width:\s*100%/.test(block[0])) return 'range inputs have no explicit width';
+  return null;
+});
+
+check('No readout cell can be squeezed under the figure it holds', () => {
+  // A fixed 128px floor was narrower than an eight digit population, so once a
+  // city passed ten million the number ran past its own padding and into the
+  // cell border. The floor has to follow the contents instead.
+  const css = readCss();
+  const cell = css.match(/\.readout > \*\s*\{[^}]*\}/);
+  if (!cell) return 'no rule for readout cells at all';
+  if (!/min-width:\s*min-content/.test(cell[0])) return 'readout cells have a floor that ignores their contents';
+  return null;
+});
+
+check('A figure keeps a gutter after its last digit', () => {
+  // The floor is the figure plus this gutter, so the longest number in a row
+  // is held off the border rather than ending flush against it.
+  const css = readCss();
+  const value = css.match(/\.readout-value\s*\{[^}]*\}/);
+  if (!value) return 'no rule for readout values at all';
+  const px = value[0].match(/padding-right:\s*(\d+(?:\.\d+)?)px/);
+  if (!px) return 'no gutter after the figure';
+  if (parseFloat(px[1]) < 8) return `gutter of ${px[1]}px is too small to read as space`;
+  return null;
+});
+
+check('A long label does not claim width the figures need', () => {
+  // Labels wrap to two lines by design, so their single line width says
+  // nothing about how wide a cell should be. Without containment the widest
+  // label, not the widest figure, would set the share of the row.
+  const css = readCss();
+  const label = css.match(/\.readout-label\s*\{[^}]*\}/);
+  if (!label) return 'no rule for readout labels at all';
+  if (!/contain:\s*inline-size/.test(label[0])) return 'labels still size their own cells';
   return null;
 });
 

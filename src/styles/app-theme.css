@@ -373,11 +373,20 @@ h4 {
   border: 1px solid var(--rule);
   border-radius: 3px;
   overflow: hidden;
+  /* The strip sits in a pane that is half the window, so what matters is how
+     much room the strip itself has, not how wide the window is. */
+  container-type: inline-size;
 }
 
+/* Cells start at the width of their own figure and share what is left over.
+   A fixed 128px basis gave every cell the same room whatever it had to hold,
+   so the widest figure in the row, an eight digit population, ran into its
+   own border once a city passed ten million while the cells beside it sat
+   half empty. min-content is the floor a figure set in one unbroken line
+   needs, so nothing can be squeezed under its own contents again. */
 .readout > * {
-  flex: 1 1 0;
-  min-width: 128px;
+  flex: 1 1 auto;
+  min-width: min-content;
   padding: 11px 13px;
   border-right: 1px solid var(--rule);
 }
@@ -394,6 +403,10 @@ h4 {
   color: var(--muted);
   line-height: 1.35;
   min-height: 2.7em;
+  /* Labels wrap, so how wide one would be on a single line says nothing about
+     how wide its cell should be. Containment keeps a long label out of that
+     calculation and lets the figure underneath set the width instead. */
+  contain: inline-size;
 }
 
 .readout-value {
@@ -403,6 +416,11 @@ h4 {
   line-height: 1.1;
   margin-top: 5px;
   white-space: nowrap;
+  /* Invisible where there is room, and the thing that keeps the longest figure
+     in the row off its own border where there is not: it travels into the
+     cell's min-content width, so the flex floor always leaves this much air
+     after the last digit. */
+  padding-right: 10px;
 }
 
 .readout-note {
@@ -414,8 +432,7 @@ h4 {
 
 /* The one figure a panel exists to produce, given room to be seen first. */
 .readout > [data-primary] {
-  flex: 1.6 1 0;
-  min-width: 168px;
+  flex: 1.6 1 auto;
   background: var(--raised);
 }
 
@@ -428,9 +445,41 @@ h4 {
   color: var(--ink-soft);
 }
 
-@media (max-width: 900px) {
+/* Five figures only fit across a narrow strip if the headline gives some of
+   its size back. Shrinking the type and closing the gutters buys back about
+   seventy pixels, which is the difference between five cells breathing on one
+   line and one of them stranded on a second. */
+@container (max-width: 760px) {
+  .readout > * {
+    padding: 10px 10px;
+  }
+
   .readout > [data-primary] .readout-value {
     font-size: 30px;
+  }
+}
+
+/* Below this there is no honest way to fit five figures across, so the strip
+   breaks into even rows of three rather than stranding whichever cell falls
+   off the end across the full width on its own. */
+@container (max-width: 545px) {
+  .readout > * {
+    flex-basis: 30%;
+  }
+}
+
+@container (max-width: 620px) {
+  .readout > * {
+    padding: 9px 8px;
+  }
+
+  .readout-value {
+    font-size: 19px;
+    padding-right: 7px;
+  }
+
+  .readout > [data-primary] .readout-value {
+    font-size: 26px;
   }
 }
 
