@@ -15,6 +15,17 @@ const ARCHIVE_API = 'https://archive-api.open-meteo.com/v1/archive';
 const CLIMATE_API = 'https://climate-api.open-meteo.com/v1/climate';
 const WORLDPOP_API = 'https://api.worldpop.org/v1';
 
+/**
+ * Gaps between checks on a queued WorldPop task, in milliseconds.
+ *
+ * Half a second for the first five seconds, where most tasks finish, then one
+ * second so a slow one does not turn into fifty requests. Modelled against the
+ * flat two second wait this replaces: never slower at any task length, and up
+ * to a second and a half faster on the short ones that were paying two seconds
+ * to learn they had already finished.
+ */
+const POLL_STEPS = [...Array(10).fill(500), 1000];
+
 export interface Bounds {
   north: number;
   south: number;
@@ -35,6 +46,15 @@ export interface DailySeries {
 }
 
 const sleepMs = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/**
+ * Population answers, keyed on the rounded box.
+ *
+ * WorldPop sums a 100 m raster over the polygon, which is real work on a free
+ * service, so the same area should never be asked for twice. Panning back to
+ * somewhere already priced is then instant rather than another wait.
+ */
+const populationCache = new Map<string, number>();
 
 async function getJson(url: string, signal?: AbortSignal, attempt = 0): Promise<any> {
   const response = await fetch(url, { signal });
@@ -179,6 +199,10 @@ export const fetchPopulation = async (bounds: Bounds, signal?: AbortSignal): Pro
     ],
   };
 
+  const key = [w, s, e, n].map(v => v.toFixed(3)).join(',');
+  const cached = populationCache.get(key);
+  if (cached !== undefined) return cached;
+
   const url =
     `${WORLDPOP_API}/services/stats?dataset=wpgppop&year=${POPULATION_YEAR}` +
     `&geojson=${encodeURIComponent(JSON.stringify(geojson))}&runasync=false`;
@@ -188,13 +212,21 @@ export const fetchPopulation = async (bounds: Bounds, signal?: AbortSignal): Pro
 
   // A synchronous request that runs past the server's limit comes back as a
   // queued task instead, which has to be polled for its result.
+  //
+  // The gap between checks starts short and lengthens. A flat two second wait
+  // charged every caller two seconds even when the task had finished in two
+  // hundred milliseconds, which was most of the delay people noticed.
   const deadline = Date.now() + 60_000;
+  let poll = 0;
   while (result?.status !== 'finished' && result?.taskid && Date.now() < deadline) {
-    await sleepMs(2000);
+    await sleepMs(POLL_STEPS[Math.min(poll, POLL_STEPS.length - 1)]);
+    poll += 1;
     result = await getJson(`${WORLDPOP_API}/tasks/${result.taskid}`, signal);
   }
 
   const total = Number(result?.data?.total_population);
   if (!isFinite(total) || total < 0) throw new Error('WorldPop returned no population figure');
-  return Math.round(total);
+  const rounded = Math.round(total);
+  populationCache.set(key, rounded);
+  return rounded;
 };

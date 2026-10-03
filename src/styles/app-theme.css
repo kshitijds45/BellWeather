@@ -422,7 +422,6 @@ h4 {
 .readout > [data-primary] .readout-value {
   font-size: 38px;
   letter-spacing: -0.03em;
-  margin-top: 3px;
 }
 
 .readout > [data-primary] .readout-label {
@@ -452,7 +451,7 @@ h4 {
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0 10px 7px;
+  padding: 9px 10px 8px;
   white-space: nowrap;
   border-bottom: 1px solid var(--rule-strong);
 }

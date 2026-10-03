@@ -33,6 +33,39 @@ const run = async () => {
     u.searchParams.get('models') === 'era5', `models=${u.searchParams.get('models')}`);
   ck('History parses into aligned arrays', h.dates.length===2 && h.tmax.length===2 && h.tmean.length===2);
 
+
+  console.log('\n--- K2. Population latency ---');
+  {
+    // A queued task used to cost a flat two seconds before the first check,
+    // even when it had finished in a fraction of that.
+    const t0 = Date.now();
+    script = [
+      { status:200, body:{ taskid:'abc', status:'created' } },
+      { status:200, body:{ status:'finished', data:{ total_population: 8900000 } } },
+    ];
+    calls.length = 0;
+    const pop = await fetchPopulation({ north:41.6, south:41.3, east:9.2, west:8.5 });
+    const waited = Date.now() - t0;
+    ck('A queued task is picked up without a two second wait', waited < 1200, `waited ${waited}ms`);
+    ck('The queued result is read correctly', pop === 8900000, String(pop));
+    ck('Polling the task costs one extra request, not more', calls.length === 2, `${calls.length} calls`);
+  }
+
+  {
+    // The same box twice must not be computed twice.
+    const box = { north:41.6, south:41.3, east:9.2, west:8.5 };
+    calls.length = 0;
+    script = [{ status:200, body:{ status:'finished', data:{ total_population: 8900000 } } }];
+    const again = await fetchPopulation(box);
+    ck('A box already answered is served without another request', calls.length === 0, `${calls.length} calls`);
+    ck('The cached figure is the one that was computed', again === 8900000, String(again));
+
+    calls.length = 0;
+    script = [{ status:200, body:{ status:'finished', data:{ total_population: 1234 } } }];
+    const other = await fetchPopulation({ north:45, south:44, east:-11, west:-12 });
+    ck('A different box is still fetched', calls.length === 1 && other === 1234, `${calls.length} calls, ${other}`);
+  }
+
   console.log('\n--- L. Error handling ---');
   script = [{ status:400, body:{ error:true, reason:'Bad latitude' } }];
   let msg=''; try { await fetchHistory(999, 999); } catch(e:any){ msg=e.message; }
@@ -101,7 +134,9 @@ const run = async () => {
   ck('A queued population task is polled to completion', polled===500 && calls.length===2 && calls[1].includes('/tasks/abc'));
 
   script = [{ status:200, body:{ status:'finished', data:{} } }];
-  msg=''; try { await fetchPopulation({north:1,south:0,east:1,west:0}); } catch(e:any){ msg=e.message; }
+  // A box of its own: an answered box is cached, so reusing one would test the
+  // cache rather than the parser.
+  msg=''; try { await fetchPopulation({north:3,south:2,east:3,west:2}); } catch(e:any){ msg=e.message; }
   ck('A population response with no figure is rejected', msg.length>0, msg);
 
   console.log('\n--- P. Geometry ---');

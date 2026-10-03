@@ -154,8 +154,6 @@ export const ProductSection: React.FC<{
   onPerilChange: (p: Peril) => void;
   currency: Currency;
   onCurrencyChange: (code: string) => void;
-  localHeatTrigger: number | null;
-  onUseLocalHeatTrigger: () => void;
 }> = ({
   a,
   onChange,
@@ -165,8 +163,6 @@ export const ProductSection: React.FC<{
   onPerilChange,
   currency,
   onCurrencyChange,
-  localHeatTrigger,
-  onUseLocalHeatTrigger,
 }) => {
   const set = (patch: Partial<Assumptions>) => onChange({ ...a, ...patch });
 
@@ -291,19 +287,6 @@ export const ProductSection: React.FC<{
                     <span>0°C</span>
                     <span>{MAX_HEAT_C}°C</span>
                   </div>
-                  <p className="trigger-note">
-                    Met Office threshold for Greater London. Set per county, 25°C to 28°C.
-                    {localHeatTrigger !== null && (
-                      <>
-                        {' '}
-                        The top 10% of summer days here reach{' '}
-                        <button type="button" className="jump" onClick={onUseLocalHeatTrigger}>
-                          {localHeatTrigger}°C
-                        </button>
-                        .
-                      </>
-                    )}
-                  </p>
                 </div>
 
                 <div className="terms-line">

@@ -30,7 +30,7 @@ import {
   HISTORY_START,
   historyEnd,
 } from './services/ClimateData';
-import { Assumptions, DEFAULTS, analyse, project, derivedHeatThreshold } from './services/RiskModel';
+import { Assumptions, DEFAULTS, analyse, project } from './services/RiskModel';
 import { findCurrency } from './services/Currency';
 
 const LONDON: { name: string; area: Bounds } = {
@@ -70,10 +70,6 @@ export default function App() {
   const currency = findCurrency(currencyCode);
 
   const [history, setHistory] = useState<DailySeries | null>(null);
-  const localHeatTrigger = useMemo(
-    () => (history ? derivedHeatThreshold(history.dates, history.tmax) : null),
-    [history]
-  );
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
@@ -400,10 +396,6 @@ export default function App() {
                 onPerilChange={setPeril}
                 currency={currency}
                 onCurrencyChange={setCurrencyCode}
-                localHeatTrigger={localHeatTrigger}
-                onUseLocalHeatTrigger={() => {
-                  if (localHeatTrigger !== null) setAssumptions(a => ({ ...a, heatThreshold: localHeatTrigger }));
-                }}
               />
             </section>
 
