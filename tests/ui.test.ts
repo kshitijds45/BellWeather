@@ -352,6 +352,37 @@ check('Trigger limits sit outside the recorded extremes on Earth', () => {
   return null;
 });
 
+check('The annual limit and the currency survive the loss of their own panel', () => {
+  // Both used to sit in a Limits panel of their own, which cost a panel head,
+  // a border and a row of padding to carry two controls. They now close the
+  // terms sentence instead. Losing the panel must not lose the controls.
+  const html = productWith({});
+  if (!html.includes('aria-label="Most payouts in one year"')) return 'the annual limit box is gone';
+  if (!html.includes('aria-label="Currency"')) return 'the currency control is gone';
+  for (const c of CURRENCIES) {
+    if (!html.includes(`value="${c.code}"`)) return `${c.code} is no longer offered`;
+  }
+  return null;
+});
+
+check('The annual limit reads as part of the terms, not as a stray number', () => {
+  const text = plain(productWith({}));
+  return inOrder(text.toLowerCase(), ['cap payouts at', 'a year per customer', 'show money in']);
+});
+
+check('A range input is told to fill its row', () => {
+  // flex: 1 does nothing outside a flex container, so without an explicit
+  // width the track fell back to the browser's own ~129px inside a 291px row.
+  // The labels under it then pointed at nothing, and a value at the maximum
+  // parked the thumb mid-row, which is a counting bug dressed as a cosmetic
+  // one. Read from the stylesheet so the rule cannot be dropped silently.
+  const css = require('fs').readFileSync('src/styles/app-theme.css', 'utf8') as string;
+  const block = css.match(/input\[type='range'\]\s*\{[^}]*\}/);
+  if (!block) return 'no rule for range inputs at all';
+  if (!/width:\s*100%/.test(block[0])) return 'range inputs have no explicit width';
+  return null;
+});
+
 /**
  * A small synthetic record so the strip can be rendered against a real
  * analysis rather than a hand-built object that could drift from the model.

@@ -540,6 +540,12 @@ select option {
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
+  /* Without this a range input outside a flex row falls back to the browser's
+     own width, around 129px, so the track becomes a stub inside its container
+     and a value at the maximum parks the thumb mid-row. `flex: 1` only applies
+     to the sliders that do sit in a flex row, and its zero basis still wins
+     there, so both cases are covered. */
+  width: 100%;
   flex: 1;
   min-width: 0;
   height: 3px;
@@ -1104,4 +1110,20 @@ button.jump:hover {
 
 .btn-ghost:disabled:hover {
   border-color: var(--rule-strong);
+}
+
+/* The closing line of the policy terms: the annual cap and the currency. */
+.terms-footer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  gap: 6px 22px;
+}
+
+select.inline-select {
+  width: auto;
+  padding: 3px 24px 3px 7px;
+  font-size: 13px;
+  font-weight: 600;
+  background-position: calc(100% - 13px) 52%, calc(100% - 8px) 52%;
 }

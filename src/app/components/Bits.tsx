@@ -6,7 +6,7 @@ export const SectionHead: React.FC<{
   standfirst?: React.ReactNode;
   aside?: React.ReactNode;
 }> = ({ index, title, standfirst, aside }) => (
-  <header className="flex items-start justify-between gap-4 flex-wrap">
+  <header className="flex items-start justify-between gap-4 max-sm:flex-wrap">
     <div className="min-w-0">
       <p className="section-index">{index}</p>
       <h2 className="section-title">{title}</h2>

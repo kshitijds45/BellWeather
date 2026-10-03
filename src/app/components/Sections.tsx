@@ -330,31 +330,41 @@ export const ProductSection: React.FC<{
             )}
           </div>
 
+          {/* The annual cap and the currency used to sit in a titled panel of
+              their own, where the chrome cost more than the two controls did.
+              As one line at the foot of the terms they read as part of the
+              contract, which is what the cap is. */}
+          <div className="terms-line terms-footer">
+            <Term>
+              <Word>Cap payouts at</Word>
+              <InlineNumber
+                name="Most payouts in one year"
+                value={a.annualLimit}
+                onChange={v => set({ annualLimit: Math.max(1, Math.min(12, Math.round(v))) })}
+                min={1}
+                max={12}
+                width={48}
+              />
+              <Word>a year per customer</Word>
+            </Term>
+            <Term>
+              <Word>Show money in</Word>
+              <select
+                className="inline-select"
+                value={currency.code}
+                onChange={e => onCurrencyChange(e.target.value)}
+                aria-label="Currency"
+              >
+                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
+              </select>
+            </Term>
+          </div>
+
           <Note>
             Only whole blocks pay. Five hot days at a three day trigger pay once, and the two spare
             days do not carry over to a later spell. This follows the UK Cold Weather Payment rule,
             which pays again for each further seven day period.
           </Note>
-        </PanelBlock>
-
-        <PanelBlock head="Limits">
-          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3 items-start">
-            <SliderField
-              label="Most payouts in one year"
-              value={a.annualLimit}
-              onChange={v => set({ annualLimit: Math.round(v) })}
-              min={1}
-              max={12}
-              unit=""
-              hint="Caps the worst case for one customer"
-            />
-            <label className="block">
-              <span className="field-label">Currency</span>
-              <select value={currency.code} onChange={e => onCurrencyChange(e.target.value)}>
-                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
-              </select>
-            </label>
-          </div>
         </PanelBlock>
 
       </div>
