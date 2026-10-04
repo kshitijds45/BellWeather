@@ -287,7 +287,7 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
                     body:
                       'Heating and cooling costs rise with changing temperatures when income does not.',
                     source:
-                      'Britain's Cold Weather Payment gives \u00a325 for every 7 consecutive days at or below 0\u00b0C with no claim to make.',
+                      'Britiain has a Cold Weather Payment which gives \u00a325 for every 7 consecutive days at or below 0\u00b0C with no claim to make.',
                     accent: 'var(--g-cold)',
                   },
                   {
