@@ -266,10 +266,9 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
             'Who needs it',
             <>
               <p className="guide-eyebrow">The need</p>
-              <h2>Heat and cold take income, not property.</h2>
+              <h2>Heat and cold take income.</h2>
               <p className="guide-lede">
-                There is nothing for a loss adjuster to measure and nothing to photograph, so
-                conventional cover does not answer. The money is lost all the same.
+                A heatwave takes a week of earnings. A cold snap adds a month to the heating bill. Neither leaves any damage behind, so conventional cover has nothing to pay against.
               </p>
               <div className="guide-grid4">
                 {[
@@ -284,11 +283,11 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
                   },
                   {
                     num: '02',
-                    title: 'The household in a cold snap',
+                    title: 'The household',
                     body:
-                      'Heating costs rise exactly when income does not. Britain already runs this product.',
+                      'Heating and cooling costs rise with changing temperatures when income does not.',
                     source:
-                      'The Cold Weather Payment gives \u00a325 for every 7 consecutive days at or below 0\u00b0C, with no claim to make. It is the cold trigger here.',
+                      'Britain's Cold Weather Payment gives \u00a325 for every 7 consecutive days at or below 0\u00b0C with no claim to make.',
                     accent: 'var(--g-cold)',
                   },
                   {
