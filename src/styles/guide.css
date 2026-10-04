@@ -93,7 +93,10 @@
   display: flex;
   flex-direction: column;
   width: min(1000px, 100%);
-  height: min(640px, 100%);
+  /* Tall enough for the densest card, the use cases, to sit on one screen.
+     The deck scrolls rather than clipping if a window is shorter than this,
+     but at every ordinary window size nothing is hidden below the fold. */
+  height: min(700px, 100%);
   background: var(--g-bg);
   border-radius: 6px;
   box-shadow: 0 40px 90px -24px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.3);
@@ -436,6 +439,53 @@
 
 .guide-grid4 p {
   font-size: 12.5px;
+}
+
+/* The evidence line under a use case. Set apart from the body so a reader can
+   see at a glance which cases are backed by something that already exists. */
+.guide-source {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--g-rule);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--g-muted);
+}
+
+/* The same four points as a card grid, stripped of their frames so they can
+   share a slide with the console drawing without either being squeezed. */
+.guide-strip4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px 22px;
+  margin-top: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--g-rule);
+}
+
+.guide-strip4 .guide-num {
+  margin-bottom: 6px;
+  color: var(--g-accent);
+}
+
+.guide-strip4 h3 {
+  font-size: 14px;
+  line-height: 1.25;
+  margin-bottom: 5px;
+}
+
+.guide-strip4 p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--g-ink-soft);
+}
+
+.guide-strip4 + .guide-nav-layout {
+  margin-top: 18px;
+  /* The drawing gives up a little width to the steps here, because this card
+     carries the four points as well and the drawing sets the row height. */
+  grid-template-columns: 1fr 1.1fr;
 }
 
 .guide-footnote {
@@ -888,9 +938,15 @@
   .guide-steps {
     gap: 10px;
   }
-  .guide-split,
-  .guide-grid4 {
+  .guide-split {
     margin-top: 18px;
+  }
+  .guide-grid4 {
+    margin-top: 12px;
+  }
+  .guide-source {
+    margin-top: 9px;
+    padding-top: 8px;
   }
   .guide-cover .guide-mark {
     width: min(84px, 20vw);

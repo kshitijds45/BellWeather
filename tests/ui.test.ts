@@ -544,14 +544,43 @@ check('The guide opens with five pages', () => {
   return null;
 });
 
-check('The guide runs cover, opportunity, offering, navigation, start', () =>
+check('The guide runs cover, opportunity, need, offering with navigation, start', () =>
   inOrder(guideText, [
     'Heatwave and cold wave insurance',
     'The opportunity',
+    'The need',
     'The offering',
     'How to navigate it',
     'See it price a city',
   ]));
+
+check('The need is argued with named cases, not in the abstract', () => {
+  // A business case made of adjectives persuades nobody. Each case has to name
+  // who loses money and why the loss is invisible to conventional cover.
+  for (const who of [
+    'The outdoor worker',
+    'The household in a cold snap',
+    'The small employer',
+    'The city and the large employer',
+  ]) {
+    if (!guideText.includes(who)) return `no case for ${who.toLowerCase()}`;
+  }
+  if (!/nothing to claim/i.test(guideText)) return 'does not say why conventional cover misses it';
+  return null;
+});
+
+check('The cases that cite a precedent cite a real one', () => {
+  // Both of these are checkable, and the second is the trigger this tool uses,
+  // so if the cold trigger ever moves off the Cold Weather Payment rule the
+  // card becomes a false claim.
+  if (!guideText.includes('Swiss Re')) return 'the heat precedent lost its underwriter';
+  if (!/50,000 informal women workers/.test(guideText)) return 'the heat precedent lost its scale';
+  if (!guideText.includes('Cold Weather Payment')) return 'the cold precedent is gone';
+  if (!/£25 for every 7 consecutive days at or below 0°C/.test(guideText)) {
+    return 'the Cold Weather Payment terms no longer match the scheme';
+  }
+  return null;
+});
 
 check('The guide closes rather than linking away', () => {
   // The standalone deck pointed at a public URL. Inside the tool that button

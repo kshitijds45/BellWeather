@@ -5,7 +5,7 @@ import '../../styles/guide.css';
 
 const STORAGE_KEY = 'bellweather-tour-seen-v1';
 
-const PAGES = ['Cover', 'The opportunity', 'The offering', 'How to navigate it', 'Start'];
+const PAGES = ['Cover', 'The opportunity', 'Who needs it', 'What it does', 'Start'];
 
 /** The bell curve, drawn at whatever size the caller needs. */
 const Mark: React.FC<{ className?: string; width?: number; height?: number; stroke?: number }> = ({
@@ -263,41 +263,84 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
 
           {slide(
             2,
-            'The offering',
+            'Who needs it',
             <>
-              <p className="guide-eyebrow">The offering</p>
-              <h2>Pick an area on the map. Get a price you can defend.</h2>
+              <p className="guide-eyebrow">The need</p>
+              <h2>Heat and cold take income, not property.</h2>
+              <p className="guide-lede">
+                There is nothing for a loss adjuster to measure and nothing to photograph, so
+                conventional cover does not answer. The money is lost all the same.
+              </p>
               <div className="guide-grid4">
                 {[
-                  ['01', 'Built on evidence', 'Daily temperatures since 1991, adjusted for the warming trend so every past year counts as today\u2019s climate.', 'var(--g-cold)'],
-                  ['02', 'Priced like an insurer', 'A premium set to a target profit margin, with the 1-in-200 year payout insurers must hold reserves against.', 'var(--g-ink)'],
-                  ['03', 'From one policy to a city', 'Population data turns a single price into a full book: premiums taken in, payouts and reserves needed.', 'var(--g-ink)'],
-                  ['04', 'Projected to 2050', 'Climate model projections show whether the product still works, and what it costs, in a warmer world.', 'var(--g-heat)'],
-                ].map(([num, title, body, accent]) => (
-                  <article key={num} className="guide-card" style={{ ['--g-accent' as string]: accent }}>
-                    <div className="guide-num">{num}</div>
-                    <h3>{title}</h3>
-                    <p>{body}</p>
+                  {
+                    num: '01',
+                    title: 'The outdoor worker',
+                    body:
+                      'A street vendor or a labourer stops earning on the day it is too dangerous to work. Nothing is damaged, so there is nothing to claim.',
+                    source:
+                      'Swiss Re, SEWA and Climate Resilience for All cover 50,000 informal women workers in India. Heat triggers paid in June 2024.',
+                    accent: 'var(--g-heat)',
+                  },
+                  {
+                    num: '02',
+                    title: 'The household in a cold snap',
+                    body:
+                      'Heating costs rise exactly when income does not. Britain already runs this product.',
+                    source:
+                      'The Cold Weather Payment gives \u00a325 for every 7 consecutive days at or below 0\u00b0C, with no claim to make. It is the cold trigger here.',
+                    accent: 'var(--g-cold)',
+                  },
+                  {
+                    num: '03',
+                    title: 'The small employer',
+                    body:
+                      'A caf\u00e9 or a market trader loses a week of trade in a heatwave. Business interruption cover will not respond, because it needs physical damage first.',
+                    accent: 'var(--g-heat)',
+                  },
+                  {
+                    num: '04',
+                    title: 'The city and the large employer',
+                    body:
+                      'Councils and large employers face known costs when a heat alert is raised: cooling centres, extra staff, ambulance demand, lost output. A premium turns those into a budget line.',
+                    accent: 'var(--g-ink)',
+                  },
+                ].map(c => (
+                  <article key={c.num} className="guide-card" style={{ ['--g-accent' as string]: c.accent }}>
+                    <div className="guide-num">{c.num}</div>
+                    <h3>{c.title}</h3>
+                    <p>{c.body}</p>
+                    {c.source && <p className="guide-source">{c.source}</p>}
                   </article>
                 ))}
-              </div>
-              <div className="guide-footnote">
-                <span>General method, UK calibrated defaults</span>
-                <span>Every assumption editable</span>
-                <span>Every source and formula under Method</span>
               </div>
             </>
           )}
 
           {slide(
             3,
-            'How to navigate it',
+            'What it does',
             <>
-              <p className="guide-eyebrow">How to navigate it</p>
-              <h2>Three moves to a price.</h2>
+              <p className="guide-eyebrow">The offering</p>
+              <h2>Pick an area. Get a price you can defend.</h2>
+              <div className="guide-strip4">
+                {[
+                  ['01', 'Built on evidence', 'Daily temperatures since 1991, adjusted so every past year counts as today\u2019s climate.', 'var(--g-cold)'],
+                  ['02', 'Priced like an insurer', 'A premium set to a target margin, with the 1-in-200 year payout it must reserve against.', 'var(--g-ink)'],
+                  ['03', 'One policy to a whole city', 'Population turns a single price into a full book of premiums, payouts and reserves.', 'var(--g-ink)'],
+                  ['04', 'Projected to 2050', 'Whether the product still works in a warmer world, and what it costs there.', 'var(--g-heat)'],
+                ].map(([num, title, body, accent]) => (
+                  <article key={num} style={{ ['--g-accent' as string]: accent }}>
+                    <div className="guide-num">{num}</div>
+                    <h3>{title}</h3>
+                    <p>{body}</p>
+                  </article>
+                ))}
+              </div>
               <div className="guide-nav-layout">
                 <Mock />
                 <div>
+                  <p className="guide-eyebrow">How to navigate it</p>
                   <ol className="guide-steps">
                     <li>
                       <span className="guide-n">1</span>
@@ -310,24 +353,17 @@ export const Tour: React.FC<{ open: boolean; onClose: () => void }> = ({ open, o
                       <span className="guide-n">2</span>
                       <div>
                         <h3>Read the headline bar</h3>
-                        <p>
-                          The premium for one policy and the figures for the whole book stay pinned at
-                          the top wherever you scroll.
-                        </p>
+                        <p>One policy and the whole book, pinned at the top wherever you scroll.</p>
                       </div>
                     </li>
                     <li>
                       <span className="guide-n">3</span>
                       <div>
                         <h3>Work through the tabs</h3>
-                        <dl className="guide-tabs-list">
-                          {TABS.map(([name, what]) => (
-                            <React.Fragment key={name}>
-                              <dt>{name}</dt>
-                              <dd>{what}</dd>
-                            </React.Fragment>
-                          ))}
-                        </dl>
+                        <p>
+                          {TABS.map(([name]) => name.slice(3)).join(', ')}. They run left to right in
+                          the order the price is built.
+                        </p>
                       </div>
                     </li>
                   </ol>
