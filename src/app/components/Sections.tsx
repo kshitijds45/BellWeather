@@ -519,17 +519,6 @@ export const PriceSection: React.FC<{
   const sel = pickPrice(result, peril);
   const separateTail = result.heat.price.tailPayout + result.cold.price.tailPayout;
 
-  /**
-   * A trigger can fire so often that the annual cap binds every year. The model
-   * still prices it, correctly, but the answer is the cost of a certainty
-   * rather than of a risk, and that is worth saying out loud. Twice the cap is
-   * the point where a run of bad luck stops being what drives the payout.
-   */
-  const certain = ([] as Array<'heat' | 'cold'>).concat(
-    showHeat && result.heat.price.priceable && result.heat.price.eventsPerYear > a.annualLimit * 2 ? ['heat'] : [],
-    showCold && result.cold.price.priceable && result.cold.price.eventsPerYear > a.annualLimit * 2 ? ['cold'] : []
-  );
-
   // Cover that runs both ways can carry two different payouts, so the plain
   // reading has to name both rather than pretend there is one figure.
   const payoutPhrase =
@@ -573,6 +562,22 @@ export const PriceSection: React.FC<{
             </button>{' '}
             adjusted for warming. Of the premium, {money(sel.expectedPayout, currency)} goes on claims,{' '}
             {money(sel.expenses, currency)} on running costs and {money(sel.margin, currency)} is profit.
+          </p>
+        )}
+
+        {/* Somewhere hot enough fires the trigger far more often than the policy
+            pays for. The premium then sits on a hard ceiling and stops reacting
+            to anything, which reads as a broken number unless the panel says
+            plainly that the cap is what is holding it. */}
+        {sel.priceable && sel.cappedShare > 0.5 && (
+          <p className="callout">
+            <strong>This premium is at its ceiling.</strong> The trigger fires about{' '}
+            {sel.eventsPerYear.toFixed(1)} times a year against a cap of {a.annualLimit} payouts, so
+            almost every year pays the maximum. The premium cannot rise above{' '}
+            {money(sel.premiumCeiling, currency)} however much hotter or colder the place gets, because
+            that is {a.annualLimit} payouts divided by the {pct(sel.lossRatio)} claims share. The figure
+            is arithmetically right and commercially meaningless. Raise the cap, or move the trigger to
+            something that is actually extreme here.
           </p>
         )}
 
@@ -643,17 +648,6 @@ export const PriceSection: React.FC<{
           ((showHeat && !result.heat.price.priceable) || (showCold && !result.cold.price.priceable)) && (
             <Note>A dash means this trigger never fired in the whole record. That does not mean it is impossible, only that there is nothing here to base a price on.</Note>
           )
-        )}
-        {certain.length > 0 && (
-          <Note>
-            The {certain.join(' and ')} trigger fires about{' '}
-            {certain
-              .map(k => (k === 'heat' ? result.heat.price : result.cold.price).eventsPerYear.toFixed(1))
-              .join(' and ')}{' '}
-            times a year against a cap of {a.annualLimit}, so the cap binds in almost every year and
-            the cover is closer to a certainty than a risk. The premium below is arithmetically
-            correct and commercially meaningless. Recalibrate the trigger for this location.
-          </Note>
         )}
         {showBoth && result.heat.price.priceable && result.cold.price.priceable && (
           <Note>
@@ -799,6 +793,10 @@ export const OutlookSection: React.FC<{
     band: pickBand(p),
   }));
 
+  // A path exists only if at least one year on it carries a price for the
+  // peril on screen. Rows can be present and every value still be null.
+  const hasPath = chartData.some(r => r.smoothed !== undefined);
+
   const ticks = chartData.length
     ? yearTicks(chartData[0].year, chartData[chartData.length - 1].year, 5)
     : yearTicks(FUTURE.start, FUTURE.end, 5);
@@ -840,7 +838,23 @@ export const OutlookSection: React.FC<{
           </div>
         )}
 
-        {projection && result && !loading && (
+        {/* The projection never prices the future directly. It scales today's
+            frequency by the climate models' own future count over their count
+            at the reference year, so model bias cancels. Where the models show
+            no qualifying events at this trigger, that denominator is zero, the
+            path is dropped and the run used to report success over an empty
+            chart. Say what happened instead of drawing nothing. */}
+        {projection && result && !loading && !hasPath && (
+          <Empty>
+            The climate models record no {peril === 'cold' ? 'cold spell' : peril === 'heat' ? 'heatwave' : 'qualifying'}{' '}
+            at this trigger, so there is no modelled baseline to scale today's frequency against and no
+            path can be drawn. This happens where the peril does not occur at all, and where the model
+            grid runs cooler than the reanalysis the rest of the tool reads. Move the trigger towards
+            what is extreme for this place, or switch peril.
+          </Empty>
+        )}
+
+        {projection && result && !loading && hasPath && (
           <>
             <Readout
               items={[

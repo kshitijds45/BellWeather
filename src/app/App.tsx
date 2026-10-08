@@ -300,13 +300,16 @@ export default function App() {
               </div>
               {draw && (
                 <>
+                  {/* Coloured, and the only coloured control on the map, because
+                      testers kept missing it against the search box beside it. */}
                   <button
                     onClick={draw.start}
                     disabled={draw.drawing}
-                    className="btn-solid px-3.5 h-9 inline-flex items-center gap-2 shrink-0"
+                    data-drawing={draw.drawing ? '' : undefined}
+                    className="btn-draw h-9 inline-flex items-center gap-2 shrink-0"
                   >
                     <Square className="size-3.5" />
-                    <span className="hidden sm:inline">{draw.drawing ? 'Drawing' : 'Draw area'}</span>
+                    <span>{draw.drawing ? 'Drawing' : 'Draw area'}</span>
                   </button>
                   {isCustomArea && (
                     <button

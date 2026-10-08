@@ -975,6 +975,24 @@ input[type='number'].inline-number {
   padding: 2px 0 2px 12px;
 }
 
+/* Said in the reading line rather than in a footnote, because it explains a
+   figure the reader has already seen and would otherwise mistrust. */
+.callout {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  background: rgba(255, 122, 85, 0.07);
+  border: 1px solid rgba(255, 122, 85, 0.3);
+  border-left: 2px solid var(--heat);
+  border-radius: 3px;
+  padding: 10px 12px;
+}
+
+.callout strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 /* An inline jump to the panel a figure came from. */
 button.jump {
   background: none;
@@ -1118,6 +1136,41 @@ button.jump:hover {
   .rs-fig {
     font-size: 15px;
   }
+}
+
+/* The one call to action on the map, and the only coloured control on it.
+   Readers were losing it beside the search box when it carried the same
+   graphite as everything else, so it takes the heat accent, a heavier weight
+   and a soft ring to lift it off the tiles behind. */
+.btn-draw {
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: var(--heat);
+  color: #241009;
+  border: 1px solid var(--heat);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0 14px;
+  box-shadow: 0 0 0 3px rgba(255, 122, 85, 0.18), 0 6px 16px -6px rgba(0, 0, 0, 0.6);
+  transition: box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.btn-draw:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 0 0 4px rgba(255, 122, 85, 0.26), 0 8px 18px -6px rgba(0, 0, 0, 0.6);
+}
+
+/* While a box is being dragged the button is no longer the thing to look at,
+   so it drops back to a plain disabled state instead of shouting. */
+.btn-draw:disabled {
+  background: var(--paper);
+  color: var(--muted);
+  border-color: var(--rule-strong);
+  box-shadow: none;
+  cursor: default;
+  filter: none;
 }
 
 /* A one-line prompt under the map controls, because a map with a search box on

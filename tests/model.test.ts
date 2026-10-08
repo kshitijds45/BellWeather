@@ -195,6 +195,40 @@ console.log('\n--- H. Trigger read from local climate ---');
     derivedHeatThreshold(polar.dates, polar.tmax) === 0, `got ${derivedHeatThreshold(polar.dates, polar.tmax)}`);
 }
 
+// ---------------------------------------------------------------------------
+// The price ceiling
+//
+// Somewhere hot enough fires the trigger far more often than the policy pays
+// for, and the premium then stops moving. Two readers reported that flat
+// figure as a bug, so the ceiling and how much of the distribution sits on it
+// are now part of the price rather than something the panel has to infer.
+// ---------------------------------------------------------------------------
+{
+  const payout = 100;
+  // A frequency so high that every year pays the cap.
+  const dist = paidDistribution({ mean: 40, variance: 40, model: 'Poisson' }, DEFAULTS.annualLimit);
+  const outcomes = outcomesFrom(dist, payout);
+  const priced = priceFrom(outcomes, 40, DEFAULTS, 10000);
+  const lossRatio = DEFAULTS.targetCombinedRatio - DEFAULTS.expenseRatio;
+  const expected = (DEFAULTS.annualLimit * payout) / lossRatio;
+
+  ck('The ceiling is the capped payout over the claims share',
+    Math.abs(priced.premiumCeiling - expected) < 1e-6, `got ${priced.premiumCeiling.toFixed(2)}`);
+  ck('A saturated location reports almost all of its probability at the cap',
+    priced.cappedShare > 0.99, `got ${priced.cappedShare.toFixed(4)}`);
+  ck('Its premium is the ceiling, so no hotter place can be charged more',
+    Math.abs(priced.premium - priced.premiumCeiling) < 0.5,
+    `${priced.premium.toFixed(2)} against ${priced.premiumCeiling.toFixed(2)}`);
+
+  // The default UK setting is nowhere near the cap, which is what makes the
+  // flag meaningful rather than permanent furniture.
+  const mild = priceFrom(outcomesFrom(paidDistribution({ mean: 0.6, variance: 0.6, model: 'Poisson' }, DEFAULTS.annualLimit), payout), 0.6, DEFAULTS, 10000);
+  ck('An ordinary location is not flagged as capped', mild.cappedShare < 0.05,
+    `got ${mild.cappedShare.toFixed(4)}`);
+  ck('An ordinary premium sits well under the ceiling', mild.premium < mild.premiumCeiling * 0.5,
+    `${mild.premium.toFixed(2)} against ${mild.premiumCeiling.toFixed(2)}`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fails.length) console.log('FAILED:', fails.join(' | '));
 process.exit(fail?1:0);

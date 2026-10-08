@@ -349,6 +349,13 @@ export interface Price {
   capital: number;             // tail payout minus expected payout
   returnOnCapital: number | null;
   priceable: boolean;
+  // Where the annual limit stops the price. Somewhere hot enough fires the
+  // trigger far more often than the policy pays for, and from that point the
+  // premium cannot move however much worse the climate gets. The figure looks
+  // broken unless the panel can say that the cap, not the weather, is holding
+  // it. cappedShare is how much of the probability sits on the top payout.
+  premiumCeiling: number;
+  cappedShare: number;
 }
 
 // An expense ratio cannot fall to nothing however large the book grows.
@@ -404,7 +411,17 @@ export function priceFrom(
   const margin = premium * (1 - a.targetCombinedRatio);
   const capital = Math.max(0, tailPayout - expectedPayout);
 
+  // The most a year can cost is every allowed payout being made, so the premium
+  // has a hard ceiling at that figure over the loss ratio. Both perils together
+  // cap at the sum of their limits, which the combined outcomes already carry.
+  const maxMoney = outcomes.reduce((m, x) => Math.max(m, x.money), 0);
+  const cappedShare = outcomes
+    .filter(x => x.money === maxMoney)
+    .reduce((s, x) => s + x.prob, 0);
+
   return {
+    premiumCeiling: priceable && lossRatio > 0 ? maxMoney / lossRatio : 0,
+    cappedShare,
     eventsPerYear,
     expectedPayout,
     expenses,

@@ -10,6 +10,8 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
+  PriceSection,
+  OutlookSection,
   yearTicks,
   OutlookTooltip,
   ProductSection,
@@ -19,7 +21,7 @@ import {
   clampCold,
   ResultStrip,
 } from '../src/app/components/Sections';
-import { DEFAULTS, analyse } from '../src/app/services/RiskModel';
+import { DEFAULTS, analyse, project } from '../src/app/services/RiskModel';
 import { Tour } from '../src/app/components/Tour';
 import { CURRENCIES } from '../src/app/services/Currency';
 
@@ -646,6 +648,146 @@ check('The guide keeps its controls inside the card', () => {
 check('The guide renders nothing when closed', () => {
   const shut = renderToStaticMarkup(React.createElement(Tour, { open: false, onClose: () => {} }));
   return shut === '' ? null : 'rendered while closed';
+});
+
+// ---------------------------------------------------------------------------
+// Two figures that look broken until the panel explains them
+//
+// Both came from readers. A premium that stops moving and a projection that
+// draws nothing are each correct behaviour, and each one reads as a fault
+// while the screen stays silent about it.
+// ---------------------------------------------------------------------------
+
+/** A record hot enough that the trigger fires far more often than it pays. */
+const saturated = (() => {
+  const dates: string[] = [], tmax: number[] = [], tmean: number[] = [];
+  for (let y = 2000; y <= 2024; y++)
+    for (let m = 1; m <= 12; m++)
+      for (let d = 1; d <= 28; d++) {
+        dates.push(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+        tmax.push(38);
+        tmean.push(25);
+      }
+  return analyse({ dates, tmax, tmean }, DEFAULTS, 2000, 2024, 10000);
+})();
+
+const pricePanel = (result: unknown, peril: 'heat' | 'cold' | 'both') =>
+  renderToStaticMarkup(
+    React.createElement(PriceSection, {
+      result,
+      peril,
+      a: DEFAULTS,
+      onChange: () => {},
+      currency: GBP,
+      book: 10000,
+      onGoToHazard: () => {},
+    } as never)
+  );
+
+check('A premium pinned by the annual limit says so, and names the ceiling', () => {
+  // Two readers reported the flat figure in Saudi Arabia and the Alps as a bug.
+  // It is the cap: three payouts of 100 over a 55% claims share is 545.
+  const text = plain(pricePanel(saturated, 'heat'));
+  if (!/at its ceiling/i.test(text)) return 'nothing says the premium has stopped moving';
+  if (!text.includes('£545')) return 'the ceiling figure is not stated';
+  if (!/cap of 3 payouts/.test(text)) return 'does not say what the cap is';
+  return null;
+});
+
+check('An ordinary location carries no ceiling notice', () => {
+  // One three day spell a year, so the cap of three payouts is nowhere near
+  // binding. The standing fixture cannot be used here: its fortnight of heat
+  // every July already pays four times, which is itself a capped location.
+  const mild = (() => {
+    const dates: string[] = [], tmax: number[] = [], tmean: number[] = [];
+    for (let y = 2000; y <= 2024; y++)
+      for (let m = 1; m <= 12; m++)
+        for (let d = 1; d <= 28; d++) {
+          dates.push(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+          tmax.push(m === 7 && d >= 10 && d < 13 ? 31 : 17);
+          tmean.push(11);
+        }
+    return analyse({ dates, tmax, tmean }, DEFAULTS, 2000, 2024, 10000);
+  })();
+  // One payout a year against a cap of three leaves 8% of years at the cap,
+  // which is the ordinary state of affairs rather than a saturated one.
+  if (mild.heat.price.cappedShare > 0.5) return `fixture is capped: ${mild.heat.price.cappedShare}`;
+  const text = plain(pricePanel(mild, 'heat'));
+  return /at its ceiling/i.test(text) ? 'the ceiling notice is always on' : null;
+});
+
+/** Models that never reach the trigger, so there is no baseline to scale by. */
+const emptyProjection = (() => {
+  const flat = (y0: number, y1: number) => {
+    const dates: string[] = [], tmax: number[] = [], tmean: number[] = [];
+    for (let y = y0; y <= y1; y++)
+      for (let m = 1; m <= 12; m++)
+        for (let d = 1; d <= 28; d++) {
+          dates.push(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+          tmax.push(12);
+          tmean.push(8);
+        }
+    return { dates, tmax, tmean };
+  };
+  return project(FIXTURE, { A: flat(2000, 2050), B: flat(2000, 2050) } as never, DEFAULTS, 10000, 2024);
+})();
+
+const outlookPanel = (projection: unknown) =>
+  renderToStaticMarkup(
+    React.createElement(OutlookSection, {
+      result: FIXTURE,
+      projection,
+      loading: false,
+      error: null,
+      peril: 'heat',
+      currency: GBP,
+      onRun: () => {},
+      hasRun: true,
+    } as never)
+  );
+
+check('A projection with no modelled baseline explains itself', () => {
+  // It used to report a finished run and draw an empty chart, which is the
+  // worst of both: no result and no reason.
+  if (emptyProjection.path.some(r => r.heat !== null)) return 'the fixture is not actually empty';
+  const text = plain(outlookPanel(emptyProjection));
+  if (!/no modelled baseline|record no/i.test(text)) return 'the empty path is still unexplained';
+  if (!/switch peril|move the trigger/i.test(text)) return 'does not say what to do about it';
+  return null;
+});
+
+check('A projection that does have a path still draws one', () => {
+  // The guard must not swallow good runs.
+  const warming = (() => {
+    const mk = (y0: number, y1: number) => {
+      const dates: string[] = [], tmax: number[] = [], tmean: number[] = [];
+      for (let y = y0; y <= y1; y++)
+        for (let m = 1; m <= 12; m++)
+          for (let d = 1; d <= 28; d++) {
+            dates.push(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+            const hot = m === 7 && d >= 5 && d < 19;
+            tmax.push((hot ? 31 : 18) + (y - 2000) * 0.05);
+            tmean.push(10);
+          }
+      return { dates, tmax, tmean };
+    };
+    return project(FIXTURE, { A: mk(2000, 2050), B: mk(2000, 2050) } as never, DEFAULTS, 10000, 2024);
+  })();
+  const text = plain(outlookPanel(warming));
+  if (/no modelled baseline|record no/i.test(text)) return 'a good projection was suppressed';
+  if (!text.includes('Premium today')) return 'the readout did not render';
+  return null;
+});
+
+check('The draw control is the only coloured thing on the map', () => {
+  // Readers kept losing it beside the search box while it carried the same
+  // graphite as every other control.
+  const css = readCss();
+  const rule = css.match(/\.btn-draw \{[^}]*\}/);
+  if (!rule) return 'the draw control has no style of its own';
+  if (!/background:\s*var\(--heat\)/.test(rule[0])) return 'it is not carrying the accent';
+  if (!/box-shadow/.test(rule[0])) return 'it has nothing lifting it off the tiles';
+  return null;
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
